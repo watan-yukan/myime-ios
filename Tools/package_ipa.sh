@@ -20,7 +20,16 @@ fi
 # 先簽擴充、再簽主 App；ad-hoc 簽章 (-) 只為了把 entitlements 帶進去，側載工具會再重簽
 codesign --force --sign - --entitlements KeyboardExtension/MyIMEKeyboard.entitlements "$APPEX"
 codesign --force --sign - --entitlements App/MyIME.entitlements "$APP"
-codesign -d --entitlements - "$APPEX"
+
+# 確認 App Group 真的簽進去了（曾因 XcodeGen 覆寫成空檔而漏掉）
+for target in "$APP" "$APPEX"; do
+  if ! codesign -d --entitlements - --xml "$target" 2>/dev/null | grep -q "group.com.watanyukan.myime"; then
+    echo "::error::$target 的 entitlements 缺少 App Group"
+    codesign -d --entitlements - "$target" || true
+    exit 1
+  fi
+done
+echo "App Group entitlements 檢查通過"
 
 rm -rf dist
 mkdir -p dist/Payload

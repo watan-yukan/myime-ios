@@ -26,6 +26,10 @@ targets:
     scheme: {}
     entitlements:
       path: App/MyIME.entitlements
+      # XcodeGen 會依 properties 重新產生此檔；不寫 properties 會被覆寫成空的
+      properties:
+        com.apple.security.application-groups:
+          - group.com.watanyukan.myime
     info:
       path: App/Info.plist
       properties:
@@ -56,6 +60,9 @@ targets:
       - Shared
     entitlements:
       path: KeyboardExtension/MyIMEKeyboard.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.watanyukan.myime
     info:
       path: KeyboardExtension/Info.plist
       properties:
