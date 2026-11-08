@@ -1,0 +1,24 @@
+# Xcode / XcodeGen 產物（專案檔由 project.yml 產生）
+*.xcodeproj/
+*.xcworkspace/
+build/
+dist/
+DerivedData/
+.build/
+.swiftpm/
+xcuserdata/
+
+# 簽章與機密：一律不進 repo
+*.p12
+*.cer
+*.mobileprovision
+*.ipa
+.env
+
+# 商業輸入法碼表不得進 repo（R-LIU-1）；只允許虛構測試碼表
+*.cin
+!Packages/IMECore/Tests/IMECoreTests/Fixtures/sample.cin
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,73 @@
+# XcodeGen 專案定義：在 CI（macOS）上執行 `xcodegen generate` 產生 MyIME.xcodeproj
+# 注意：Bundle ID 與 App Group ID 一旦開始側載就不要再改（風險 R13、R14）
+name: MyIME
+
+options:
+  bundleIdPrefix: com.watanyukan
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
+    DEVELOPMENT_TEAM: ""
+
+targets:
+  MyIME:
+    type: application
+    platform: iOS
+    sources:
+      - App
+      - Shared
+    scheme: {}
+    entitlements:
+      path: App/MyIME.entitlements
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleDisplayName: MyIME
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: true
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.watanyukan.myime
+    dependencies:
+      - target: MyIMEKeyboard   # app-extension 會自動嵌入 PlugIns/
+
+  MyIMEKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - KeyboardExtension
+      - Shared
+    entitlements:
+      path: KeyboardExtension/MyIMEKeyboard.entitlements
+    info:
+      path: KeyboardExtension/Info.plist
+      properties:
+        CFBundleDisplayName: MyIME
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: zh-Hant
+            RequestsOpenAccess: true   # 完整取用：共用容器、剪貼簿需要
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.watanyukan.myime.keyboard

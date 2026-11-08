@@ -1,0 +1,82 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  # 碼表防護（R-LIU-1）：repo 中除虛構測試碼表外不得有任何 .cin
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Block code tables
+        run: |
+          bad=$(git ls-files | grep -iE '\.cin$' | grep -v '^Packages/IMECore/Tests/IMECoreTests/Fixtures/sample\.cin$' || true)
+          if [ -n "$bad" ]; then
+            echo "::error::repo 中不得包含碼表檔："
+            echo "$bad"
+            exit 1
+          fi
+          echo "OK：沒有碼表檔"
+
+  ios:
+    needs: guard
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show Xcode version
+        run: xcodebuild -version
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Build (device, unsigned)
+        run: |
+          set -o pipefail
+          xcodebuild \
+            -project MyIME.xcodeproj \
+            -scheme MyIME \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build \
+            CURRENT_PROJECT_VERSION=${{ github.run_number }} \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
+
+      - name: Package IPA
+        run: bash Tools/package_ipa.sh
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: MyIME-ipa-${{ github.run_number }}
+          path: dist/MyIME.ipa
+          retention-days: 14
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: ios
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: MyIME-ipa-${{ github.run_number }}
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: MyIME.ipa
