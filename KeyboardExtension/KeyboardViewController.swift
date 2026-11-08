@@ -129,7 +129,8 @@ final class KeyboardViewController: UIInputViewController {
         let access = hasFullAccess ? "完整取用:開" : "完整取用:關"
         guard SharedStorage.containerURL != nil else {
             logger.error("app group container unavailable")
-            return "\(access)｜共用容器:無法使用"
+            let groups = SigningInfo.current.map { "描述檔群組 \($0.appGroups.count) 個" } ?? "讀不到描述檔"
+            return "\(access)｜共用容器:無法使用（\(groups)）"
         }
 
         var parts = [access]

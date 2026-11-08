@@ -30,6 +30,17 @@ struct ContentView: View {
                 }
 
                 Section {
+                    LabeledContent("使用的群組", value: AppGroupResolver.resolvedID)
+                    LabeledContent("描述檔群組", value: signingGroupsText)
+                    LabeledContent("Bundle", value: SigningInfo.current?.applicationIdentifier ?? "（讀不到描述檔）")
+                    LabeledContent("到期", value: signingExpiryText)
+                } header: {
+                    Text("簽章資訊")
+                } footer: {
+                    Text("「描述檔群組」是側載工具實際簽進去的 App Group。若顯示「（無）」，代表簽章時沒有包含 App Group。")
+                }
+
+                Section {
                     Button("寫入測試資料", action: writePing)
                     Text(pingText)
                 } header: {
@@ -172,6 +183,15 @@ struct ContentView: View {
 
     private func shortID(_ id: UUID) -> String {
         String(id.uuidString.prefix(8))
+    }
+
+    private var signingGroupsText: String {
+        guard let info = SigningInfo.current else { return "（讀不到描述檔）" }
+        return info.appGroups.isEmpty ? "（無）" : info.appGroups.joined(separator: "\n")
+    }
+
+    private var signingExpiryText: String {
+        SigningInfo.current?.expirationDate?.formatted(date: .abbreviated, time: .shortened) ?? "—"
     }
 
     private var versionText: String {

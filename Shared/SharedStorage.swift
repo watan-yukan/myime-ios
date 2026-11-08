@@ -44,7 +44,7 @@ enum SharedStorage {
     }
 
     static var containerURL: URL? {
-        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppConstants.appGroupID)
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: AppGroupResolver.resolvedID)
     }
 
     static func url(_ name: String) -> URL? {
