@@ -22,10 +22,14 @@ Spike 版的 App 叫 **MyIME**，鍵盤只有英文字母、⌫、空白、retur
 | 1 | **Git for Windows** | 版本控制、推送到 GitHub | git-scm.com |
 | 2 | **GitHub 帳號** | 放原始碼、跑雲端編譯 | github.com |
 | 3 | **iTunes** 與 **iCloud**（Apple 官網版） | 讓 Windows 認得 iPhone / iPad；**不要裝 Microsoft Store 版** | apple.com 下載頁 |
-| 4 | **Sideloadly** | 用 Apple ID 簽章並安裝 .ipa | sideloadly.io |
+| 4 | **AltServer**（含 AltStore） | 用 Apple ID 簽章並安裝 .ipa；**會註冊 App Group** | `winget install --id RileyTestut.AltServer --exact`（需系統管理員） |
+| — | ~~Sideloadly~~ | 免費帳號重簽時**不會註冊 App Group**，共用容器無法使用，不適用本專案 | — |
+| — | Apple Mobile Device Support | 讓 Windows 與 iPhone 溝通；若 iTunes 未一併裝上需另裝 | `winget install --id Apple.AppleMobileDeviceSupport --exact`（需系統管理員） |
 | 5 | （選用）libimobiledevice for Windows | 用 `idevicesyslog` 看鍵盤日誌（0.12） | 第三方編譯版 |
 
-> **Apple ID 提醒**：Sideloadly 需要輸入 Apple ID 登入 Apple 的開發者服務。若有顧慮，可另外申請一個專用 Apple ID（需開啟雙重認證）。Apple ID 密碼只在 Sideloadly 內輸入，**不要寫進任何檔案或 repo**。
+> **Apple ID 提醒**：AltServer 需要輸入 Apple ID 登入 Apple 的開發者服務。若有顧慮，可另外申請一個專用 Apple ID（需開啟雙重認證）。Apple ID 密碼只在 AltServer 視窗內輸入，**不要寫進任何檔案或 repo**。
+>
+> **只用一種側載工具**：Sideloadly 與 AltServer 各自申請開發憑證，交替使用會互相撤銷，導致「無法信任」。
 
 ---
 
@@ -80,14 +84,16 @@ git push -u origin main
 ## 4. 安裝到 iPhone / iPad
 
 1. 用 USB 線連接裝置，裝置上點「信任這部電腦」。
-2. 開啟 Sideloadly：
-   - **IPA**：選 `MyIME.ipa`
-   - **Apple account**：輸入 Apple ID
-   - **Advanced options**：保持預設，**不要**勾選更改 Bundle ID（之後每次重簽都要用同樣設定，R13 / R14）
-   - 按 **Start**，依提示輸入 Apple ID 密碼與雙重認證碼
-3. iOS 16 以上第一次側載：「設定 → 隱私權與安全性 → **開發者模式**」開啟並重新開機。
-4. 「設定 → 一般 → **VPN 與裝置管理**」→ 點你的 Apple ID → **信任**。
-5. 打開 MyIME App 確認能啟動。
+2. 從「開始」選單開啟 **AltServer**（只會出現在右下角系統匣，菱形圖示）。
+3. **第一次**：點 AltServer 圖示 →「Install AltStore」→ 選裝置 → 輸入 Apple ID 與密碼（及雙重認證碼）。
+4. iOS 16 以上第一次側載：「設定 → 隱私權與安全性 → **開發者模式**」開啟並重新開機。
+5. 「設定 → 一般 → **VPN 與裝置管理**」→ 點你的 Apple ID → **信任**（需連網；公司 Wi-Fi / VPN 可能擋住驗證，可改用行動網路）。
+6. **安裝 MyIME**：按住 **Shift** 再點 AltServer 圖示 →「Install AltStore」→ 選裝置 → 選 `MyIME.ipa`。
+7. 打開 MyIME App，「簽章資訊」的「描述檔群組」應顯示 `group.com.watanyukan.myime.<Team ID>`，「共用容器」為 ✅。
+
+> AltStore 會把 Bundle ID 與 App Group 加上 Team ID 後綴，App 會從描述檔自動讀取實際的群組名稱（`Shared/SigningInfo.swift`）。
+>
+> **7 天續簽**：電腦開著 AltServer、手機與電腦在同一 Wi-Fi（或接 USB）→ 手機開 AltStore →「My Apps」→「Refresh All」。
 
 iPhone 與 iPad 都要裝。
 
@@ -109,7 +115,7 @@ iPhone 與 iPad 都要裝。
 **預期**：狀態列第一行顯示「App 寫入 時:分:秒」，且與 App 顯示的時間一致。
 **若顯示「共用容器:無法使用」或「讀不到 App 測試資料」**：先看 MyIME App 的「簽章資訊」區塊：
 - 「描述檔群組」**有值**：App 會自動改用該群組 ID（側載工具重簽時改了名）。重開 App 與鍵盤再測一次。
-- 「描述檔群組」顯示「**（無）**」：側載工具簽章時沒有包含 App Group → 風險 R2 成立，需改用備案（換側載工具、剪貼簿匯入碼表或付費帳號）。
+- 「描述檔群組」顯示「**（無）**」：側載工具簽章時沒有包含 App Group。確認是用 **AltStore** 安裝（Sideloadly 不會註冊 App Group），且 CI 的「App Group entitlements 檢查通過」。
 
 ### 0.10 剪貼簿
 1. 在任一處複製一段文字。
@@ -160,7 +166,7 @@ iPhone 與 iPad 都測。**預期**：與 Apple 鍵盤的地球鍵行為一樣�
 
 ### 0.16 重簽後資料是否保留
 1. 打開 MyIME App，記下「0.16 重簽資料保留」兩個 ID（共用容器、App 自身），並確認已匯入碼表。
-2. 用 Sideloadly **以相同設定**再安裝一次同一個 `MyIME.ipa`（模擬 7 天重簽）。
+2. 在手機 AltStore →「My Apps」→ 對 MyIME 按「Refresh」，或用 AltServer（Shift + Install）再安裝一次同一個 `MyIME.ipa`（模擬 7 天重簽）。
 3. 再打開 MyIME App。
 
 **預期**：兩個都顯示「保留中」且 ID 與步驟 1 相同；碼表仍在。
@@ -172,8 +178,8 @@ iPhone 與 iPad 都測。**預期**：與 Apple 鍵盤的地球鍵行為一樣�
 
 | # | 項目 | iPhone | iPad | 備註 |
 |---|---|---|---|---|
-| 0.6 | GitHub Actions 編譯成功 | | — | |
-| 0.7 | Sideloadly 安裝成功 | | | 有無錯誤訊息 |
+| 0.6 | GitHub Actions 編譯成功 | ✅ | — | build #3 起含 App Group 檢查 |
+| 0.7 | AltStore 安裝成功 | ✅ | | Sideloadly 可裝但不註冊 App Group |
 | 0.8 | 鍵盤可啟用、可打字 | | | |
 | 0.9 | 鍵盤讀得到 App 寫入的資料 | | | |
 | 0.10 | 剪貼簿讀取成功 | | | 是否跳出「允許貼上」 |
