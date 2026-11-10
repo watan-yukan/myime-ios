@@ -1,12 +1,11 @@
 import Foundation
 
-/// 嘸蝦米組字狀態機（Issue #4，FR-K02~K07）。
+/// 嘸蝦米組字狀態機（Issue #4、#6、#7，FR-K02~K14、U22）。
 ///
 /// 純邏輯：輸入 `InputEvent`，更新 `state` 並回傳要對輸入框做的 `OutputAction`，
 /// 不接觸 UIKit，所有行為都能單元測試。
 ///
-/// 本 Issue 之外的事件先提供合理的基本行為，之後的 Issue 會再細化：
-/// - Return、情境改變、數字選字：#7
+/// 尚待細化的事件：
 /// - Shift 直輸大寫、候選列英文選項、空白上滑：#8
 public struct Composer {
     /// 組字內容最長保留的字母數（超過碼長仍保留，供送出英文，FR-E05）。
@@ -18,6 +17,13 @@ public struct Composer {
     public private(set) var mode: InputMode = .chinese
     /// 中文模式下，非字根的半形符號轉成全形（FR-K09）。
     public var fullWidthPunctuation = true
+    /// 數字列開啟時，組字中的數字鍵直接選字（FR-U22，預設關閉）。
+    public var numberRowSelection = false
+    /// 數字選字的對應：`1` 選第一個…`0` 選第十個（TBD-14，依原生規則決定）。
+    public var selectionKeys = SelectionKeys.digitsFromOne
+    /// 候選列目前顯示的第一個候選位置（展開候選表翻頁時由 UI 設定）；數字選字以此為起點。
+    /// 每次字根改變都會歸零。
+    public var selectionWindowStart = 0
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
@@ -54,7 +60,7 @@ public struct Composer {
             guard state.isComposing, state.candidates.indices.contains(index) else { return [] }
             return commit(state.candidates[index])
         case .returnKey:
-            // 組字中按 Return 送出原始字母，不換行（FR-K12，#7 再補測試與設定）
+            // 組字中按 Return 送出原始字母，不換行（FR-K12、TBD-17）
             guard state.isComposing else { return [.insert("\n")] }
             return commit(state.code)
         case .swipeUpSpace:
@@ -63,6 +69,7 @@ public struct Composer {
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
             punctuation.reset()
+            selectionWindowStart = 0
             guard state.isComposing else { return [] }
             state = .idle
             return display == .inline ? [.clearMarked] : []
@@ -85,6 +92,13 @@ public struct Composer {
 
     private mutating func handleKey(_ character: Character) -> [OutputAction] {
         let key = character.lowercased().first ?? character
+        if numberRowSelection, state.isComposing, !codeKeys.contains(key),
+           let offset = selectionKeys.pageOffset(for: key) {
+            // 數字列選字（FR-U22）：該位置沒有候選時不動作，避免誤送數字
+            let index = selectionWindowStart + offset
+            guard state.candidates.indices.contains(index) else { return [] }
+            return commit(state.candidates[index])
+        }
         guard codeKeys.contains(key) else {
             // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入；符號轉全形（FR-K09）
             let text = fullWidthPunctuation ? punctuation.convert(character) : String(character)
@@ -130,10 +144,12 @@ public struct Composer {
             status = .invalid
         }
         state = ComposerState(code: code, candidates: candidates, status: status)
+        selectionWindowStart = 0
     }
 
     private mutating func commit(_ text: String) -> [OutputAction] {
         state = .idle
+        selectionWindowStart = 0
         return [.insert(text)]
     }
 
