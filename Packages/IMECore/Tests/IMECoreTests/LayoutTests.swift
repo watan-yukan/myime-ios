@@ -96,7 +96,8 @@ final class LayoutTests: XCTestCase {
         let f = try frames(layout)
 
         XCTAssertEqual(f.unit, 36.3, accuracy: 0.01)
-        XCTAssertEqual(f.size.height, 8 + 4 * 45 + 3 * 11 + 4)
+        let expectedHeight: CGFloat = 8 + 180 + 33 + 4  // 上留白 + 4 列 × 45 + 3 個列間距 × 11 + 下留白
+        XCTAssertEqual(f.size.height, expectedHeight, accuracy: 0.01)
 
         let q = try find(f, row: 0) { $0.output == "q" }
         XCTAssertEqual(q.minX, 6.5, accuracy: 0.01)
@@ -126,7 +127,8 @@ final class LayoutTests: XCTestCase {
         let layout = try loadIPhone()
         let f = try frames(layout, width: 932, landscape: true)
 
-        XCTAssertEqual(f.size.height, 6 + 4 * 32 + 3 * 8.5 + 4)
+        let expectedHeight: CGFloat = 6 + 128 + 25.5 + 4  // 上留白 + 4 列 × 32 + 3 個列間距 × 8.5 + 下留白
+        XCTAssertEqual(f.size.height, expectedHeight, accuracy: 0.01)
         let q = try find(f, row: 0) { $0.output == "q" }
         XCTAssertEqual(q.minX, 121, accuracy: 0.01, "按鍵區 690 pt 置中於 932 pt")
         XCTAssertEqual(q.width, 63.7, accuracy: 0.3)
