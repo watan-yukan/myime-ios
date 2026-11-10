@@ -13,6 +13,8 @@ public struct TableIndex: Sendable {
         public var codeCount: Int
         public var valueCount: Int
         public var sourceFingerprint: [UInt8]
+        /// 碼表字根中實際用到的 a–z 以外的字元（例如 `,` `.`）。
+        public var extraCodeKeys: String
 
         public var displayName: String {
             !cname.isEmpty ? cname : (!ename.isEmpty ? ename : "未命名碼表")
@@ -27,11 +29,14 @@ public struct TableIndex: Sendable {
     private let reverseOffset: Int
 
     /// 以 memory-map 開啟索引檔。
-    public init(contentsOf url: URL) throws {
-        try self.init(data: Data(contentsOf: url, options: .alwaysMapped))
+    ///
+    /// - Parameter verifyChecksum: 是否讀完整個檔案驗證 CRC32。預設開啟（主 App 匯入與啟動時使用）；
+    ///   鍵盤冷啟動傳 `false`，只檢查檔頭與區段範圍，避免啟動時掃過整個檔案（NFR-15）。
+    public init(contentsOf url: URL, verifyChecksum: Bool = true) throws {
+        try self.init(data: Data(contentsOf: url, options: .alwaysMapped), verifyChecksum: verifyChecksum)
     }
 
-    public init(data: Data) throws {
+    public init(data: Data, verifyChecksum: Bool = true) throws {
         let reader = ByteReader(data: data)
         let headerSize = TableIndexFormat.headerSize
         guard reader.count >= headerSize + TableIndexFormat.footerSize else { throw TableIndexError.truncated }
@@ -41,8 +46,10 @@ public struct TableIndex: Sendable {
         guard version == IMECore.tableFormatVersion else { throw TableIndexError.unsupportedVersion(version) }
 
         let bodyLength = reader.count - TableIndexFormat.footerSize
-        let storedCRC = reader.u32(bodyLength)
-        guard BinaryIO.crc32(reader.bytes(0, bodyLength)) == storedCRC else { throw TableIndexError.checksumMismatch }
+        if verifyChecksum {
+            let storedCRC = reader.u32(bodyLength)
+            guard BinaryIO.crc32(reader.bytes(0, bodyLength)) == storedCRC else { throw TableIndexError.checksumMismatch }
+        }
 
         func section(_ at: Int) throws -> (Int, Int) {
             let offset = Int(reader.u32(at)), length = Int(reader.u32(at + 4))
@@ -80,6 +87,10 @@ public struct TableIndex: Sendable {
             keyNames.append(CinKeyName(key: key, label: label))
         }
 
+        let extraCount = min(Int(reader.u8(TableIndexFormat.HeaderOffset.extraKeys)), TableIndexFormat.maxExtraKeys)
+        let extraKeys = String(
+            decoding: reader.bytes(TableIndexFormat.HeaderOffset.extraKeys + 1, extraCount), as: UTF8.self)
+
         self.reader = reader
         self.codesOffset = codesOffset
         self.valuesOffset = valuesOffset
@@ -88,8 +99,15 @@ public struct TableIndex: Sendable {
             ename: ename, cname: cname, selkey: selkey, keyNames: keyNames,
             maxCodeLength: Int(reader.u8(TableIndexFormat.HeaderOffset.maxCodeLength)),
             codeCount: codeCount, valueCount: valueCount,
-            sourceFingerprint: Array(reader.bytes(TableIndexFormat.HeaderOffset.fingerprint, 16))
+            sourceFingerprint: Array(reader.bytes(TableIndexFormat.HeaderOffset.fingerprint, 16)),
+            extraCodeKeys: extraKeys
         )
+    }
+
+    /// 讀完整個檔案驗證 CRC32（以 `verifyChecksum: false` 開啟後，可在背景補驗）。
+    public func checksumIsValid() -> Bool {
+        let bodyLength = reader.count - TableIndexFormat.footerSize
+        return BinaryIO.crc32(reader.bytes(0, bodyLength)) == reader.u32(bodyLength)
     }
 
     // MARK: - 查詢

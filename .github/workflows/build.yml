@@ -36,7 +36,22 @@ jobs:
       - name: Swift version
         run: swift --version
       - name: Test IMECore
-        run: swift test --package-path Packages/IMECore --parallel
+        run: swift test --package-path Packages/IMECore --parallel --enable-code-coverage
+
+      # 覆蓋率目前只顯示、不擋 CI（Gate 2 目標 ≥ 80%）；看過實際數字後再決定是否設門檻
+      - name: Coverage summary
+        continue-on-error: true
+        run: |
+          PKG=Packages/IMECore
+          PROFDATA=$(find "$PKG/.build" -name default.profdata | head -1)
+          BIN=$(find "$PKG/.build" -name 'IMECorePackageTests.xctest' -type f | head -1)
+          llvm-cov report "$BIN" -instr-profile="$PROFDATA" -ignore-filename-regex='(\.build|Tests)/' | tee coverage.txt
+          {
+            echo '### IMECore 測試覆蓋率'
+            echo '```'
+            cat coverage.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
   ios:
     needs: guard
@@ -46,6 +61,10 @@ jobs:
 
       - name: Show Xcode version
         run: xcodebuild -version
+
+      # Gate 2：引擎測試也要在 macOS 通過。Big5 解碼等 Apple 平台專屬程式只有這裡會編譯與執行
+      - name: Test IMECore on macOS
+        run: swift test --package-path Packages/IMECore --parallel
 
       - name: Install XcodeGen
         run: brew install xcodegen

@@ -23,6 +23,9 @@ public struct ComposerState: Equatable, Sendable {
 
     public var isComposing: Bool { !code.isEmpty }
 
+    /// 候選列最後固定的英文選項（FR-E01）：目前已輸入的原始字母；沒在組字時為 nil。
+    public var englishOption: String? { isComposing ? code : nil }
+
     public static let idle = ComposerState(code: "", candidates: [], status: .idle)
 }
 

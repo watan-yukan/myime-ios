@@ -15,7 +15,7 @@ import Foundation
 ///  36  values   offset/length  UInt32 × 2
 ///  44  reverse  offset/length  UInt32 × 2
 ///  52  sourceFingerprint 16 bytes（App 端以 SHA-256 前 16 bytes 填入；可全 0）
-///  68  保留 12 bytes
+///  68  extraKeys：UInt8 數量 + 最多 11 個 ASCII 字根鍵（`,` `.` 等 a–z 以外實際出現在字根中的字元）
 /// Meta     ename / cname / selkey（UInt16 長度前綴 UTF-8）、keyName 數 UInt16、(key, label) × N
 /// Codes    依字根 bytes 排序的 16 bytes 紀錄：code[8] | valueStart UInt32 | valueCount UInt16 | 保留 UInt16
 /// Values   UInt32 位移表 × valueCount（相對 Values 區段起點的字串位置）＋ 字串池（UInt16 長度前綴 UTF-8）
@@ -29,6 +29,8 @@ enum TableIndexFormat {
     static let reverseRecordSize = 8
     static let codeFieldSize = 8
     static let footerSize = 4
+    /// Header 保留區可記錄的「非字母字根」數量（`,` `.` `'` `[` `]` 等）。
+    static let maxExtraKeys = 11
 
     enum HeaderOffset {
         static let formatVersion = 4
@@ -40,6 +42,8 @@ enum TableIndexFormat {
         static let valuesOffset = 36
         static let reverseOffset = 44
         static let fingerprint = 52
+        /// UInt8 數量 + 最多 11 個 ASCII 字根鍵（碼表實際用到的 a–z 以外的字元）。
+        static let extraKeys = 68
     }
 
     /// 把字根轉成 8 bytes（不足補 0），排序與比較都用這個形式。

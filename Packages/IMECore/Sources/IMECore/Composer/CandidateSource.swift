@@ -15,8 +15,13 @@ public protocol CandidateSource {
 extension TableIndex: CandidateSource {
     public var maxCodeLength: Int { meta.maxCodeLength }
 
+    /// 碼表實際用到的非字母字根（索引檔記錄）＋ `%keyname` 中的非字母鍵。
     public var extraCodeKeys: Set<Character> {
-        Set(meta.keyNames.compactMap { $0.key.count == 1 ? $0.key.first : nil }.filter { !$0.isLetter })
+        var keys = Set(meta.extraCodeKeys)
+        for keyName in meta.keyNames where keyName.key.count == 1 {
+            if let character = keyName.key.first, !character.isLetter { keys.insert(character) }
+        }
+        return keys
     }
 }
 

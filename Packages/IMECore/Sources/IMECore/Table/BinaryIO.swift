@@ -38,12 +38,17 @@ enum BinaryIO {
         return c
     }
 
-    static func crc32<C: Collection>(_ bytes: C) -> UInt32 where C.Element == UInt8 {
-        var crc: UInt32 = 0xFFFF_FFFF
-        for byte in bytes {
-            crc = crcTable[Int((crc ^ UInt32(byte)) & 0xFF)] ^ (crc >> 8)
+    /// 直接掃描連續記憶體，不經過泛型迭代器（大檔案時快很多，也包含未最佳化的 debug 編譯）。
+    static func crc32(_ data: Data) -> UInt32 {
+        data.withUnsafeBytes { (raw: UnsafeRawBufferPointer) -> UInt32 in
+            crcTable.withUnsafeBufferPointer { table -> UInt32 in
+                var crc: UInt32 = 0xFFFF_FFFF
+                for byte in raw {
+                    crc = table[Int((crc ^ UInt32(byte)) & 0xFF)] ^ (crc >> 8)
+                }
+                return crc ^ 0xFFFF_FFFF
+            }
         }
-        return crc ^ 0xFFFF_FFFF
     }
 }
 

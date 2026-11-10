@@ -18,6 +18,8 @@ public enum InputEvent: Equatable, Sendable {
     case contextChanged
     /// 中 / 英切換鍵（FR-K08）。
     case toggleInputMode
+    /// 點選候選列最後一格的英文選項，把組字內容當英文送出（FR-E01）。
+    case selectEnglishOption
 }
 
 /// 輸入模式（FR-K08）。

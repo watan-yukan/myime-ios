@@ -69,12 +69,27 @@ public enum TableIndexBuilder {
         var fingerprint = Array(sourceFingerprint.prefix(16))
         fingerprint.append(contentsOf: repeatElement(0, count: 16 - fingerprint.count))
         header.append(contentsOf: fingerprint)
+        let extraKeys = extraCodeKeys(in: sortedCodes)
+        BinaryIO.append(UInt8(extraKeys.count), to: &header)
+        header.append(contentsOf: extraKeys)
         header.append(Data(count: TableIndexFormat.headerSize - header.count))
         data.replaceSubrange(0..<TableIndexFormat.headerSize, with: header)
 
         // 6. Footer CRC32
         BinaryIO.append(BinaryIO.crc32(data), to: &data)
         return data
+    }
+
+    /// 字根中實際出現的 a–z 以外的字元（排序、最多 `maxExtraKeys` 個）。
+    /// 讓引擎不必依賴碼表的 `%keyname` 就知道 `,` `.` 等是字根鍵。
+    private static func extraCodeKeys(in codes: [String]) -> [UInt8] {
+        var found = Set<UInt8>()
+        for code in codes {
+            for byte in code.utf8 where !(byte >= 0x61 && byte <= 0x7A) {
+                found.insert(byte)
+            }
+        }
+        return Array(found.sorted().prefix(TableIndexFormat.maxExtraKeys))
     }
 
     private static func buildMeta(_ table: CinTable) -> Data {
