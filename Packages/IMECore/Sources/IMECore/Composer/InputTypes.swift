@@ -16,6 +16,16 @@ public enum InputEvent: Equatable, Sendable {
     case swipeUpSpace
     /// 游標移動、切換欄位、收起鍵盤（FR-K14）。
     case contextChanged
+    /// 中 / 英切換鍵（FR-K08）。
+    case toggleInputMode
+}
+
+/// 輸入模式（FR-K08）。
+public enum InputMode: Equatable, Sendable {
+    /// 嘸蝦米組字。
+    case chinese
+    /// 標準英文，按鍵直接輸出。
+    case english
 }
 
 /// 引擎要求鍵盤對輸入框做的動作；只有鍵盤的 TextOutput 會實際執行。
