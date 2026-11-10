@@ -62,6 +62,10 @@ jobs:
       - name: Show Xcode version
         run: xcodebuild -version
 
+      # Gate 2：引擎測試也要在 macOS 通過。Big5 解碼等 Apple 平台專屬程式只有這裡會編譯與執行
+      - name: Test IMECore on macOS
+        run: swift test --package-path Packages/IMECore --parallel
+
       - name: Install XcodeGen
         run: brew install xcodegen
 
