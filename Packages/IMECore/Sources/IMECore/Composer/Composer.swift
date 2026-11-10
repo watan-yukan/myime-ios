@@ -29,6 +29,10 @@ public struct Composer {
     public var appendSpaceAfterEnglish = false
     /// 送出英文時把第一個字母轉大寫（由 UI 依 `AutoCapitalization` 判斷後設定，FR-E07）。
     public var capitalizeEnglishSend = false
+    /// 雙空白句點（FR-U08，預設開啟）。需要 `textBeforeCursor` 才能判斷。
+    public var doubleSpacePeriod = true
+    /// 游標前的文字；鍵盤每次事件前以 `documentContextBeforeInput` 更新。
+    public var textBeforeCursor: String?
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
@@ -92,7 +96,8 @@ public struct Composer {
         switch event {
         case .key(let character): return [.insert(String(character))]
         case .shiftedKey(let character): return [.insert(String(character).uppercased())]
-        case .space, .swipeUpSpace: return [.insert(" ")]
+        case .space: return idleSpace(mode: .english)
+        case .swipeUpSpace: return [.insert(" ")]
         case .returnKey: return [.insert("\n")]
         case .backspace: return [.deleteBackward]
         case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode: return []
@@ -128,8 +133,19 @@ public struct Composer {
         return markedAction()
     }
 
+    /// 沒在組字時的空白：依雙空白句點規則決定輸出（FR-U08）。
+    private func idleSpace(mode: InputMode) -> [OutputAction] {
+        guard doubleSpacePeriod else { return [.insert(" ")] }
+        switch DoubleSpace.result(textBeforeCursor: textBeforeCursor, mode: mode) {
+        case .insertSpace:
+            return [.insert(" ")]
+        case .replace(let deleteCount, let text):
+            return Array(repeating: OutputAction.deleteBackward, count: deleteCount) + [.insert(text)]
+        }
+    }
+
     private mutating func handleSpace() -> [OutputAction] {
-        guard state.isComposing else { return [.insert(" ")] }
+        guard state.isComposing else { return idleSpace(mode: .chinese) }
         guard let first = state.candidates.first else {
             // 錯碼或尚未打完：不送出，保留字根讓使用者修正（FR-K07）
             return []
