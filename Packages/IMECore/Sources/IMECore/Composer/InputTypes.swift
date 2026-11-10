@@ -20,9 +20,11 @@ public enum InputEvent: Equatable, Sendable {
 
 /// 引擎要求鍵盤對輸入框做的動作；只有鍵盤的 TextOutput 會實際執行。
 public enum OutputAction: Equatable, Sendable {
+    /// 送出文字。若輸入框有 marked text，以此文字**取代**它並確定（同 `insertText`）。
     case insert(String)
     case deleteBackward
-    /// 組字顯示於輸入框模式（FR-K13）。
+    /// 以此文字取代目前的 marked text（組字顯示於輸入框模式，FR-K13）。
     case setMarked(String)
+    /// 移除 marked text，不送出任何文字。
     case clearMarked
 }
