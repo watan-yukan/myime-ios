@@ -25,6 +25,7 @@ public struct Composer {
     }
 
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
+    @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
         switch event {
         case .key(let character):
