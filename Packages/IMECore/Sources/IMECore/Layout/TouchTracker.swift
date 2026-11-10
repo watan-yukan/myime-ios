@@ -3,14 +3,14 @@ import Foundation
 import CoreGraphics
 #endif
 
-/// 觸控層要求畫面做的事。
+/// 觸控層要求畫面做的事；`touch` 是呼叫端給的手指編號，方便每根手指各自處理手勢。
 public enum TouchAction: Equatable {
     /// 按下或滑入：高亮按鍵、顯示放大預覽。
-    case highlight(KeyFrame)
+    case highlight(KeyFrame, touch: Int)
     /// 取消高亮（滑開、取消）。
-    case unhighlight(KeyFrame)
+    case unhighlight(KeyFrame, touch: Int)
     /// 確定輸出這個鍵，同時結束高亮。`byRollover` 為 true 代表因為另一根手指按下而提早送出。
-    case commit(KeyFrame, byRollover: Bool)
+    case commit(KeyFrame, touch: Int, byRollover: Bool)
 }
 
 /// 多指觸控與快打（Issue #14，FR-U19、U20、NFR-16；Spike 0.15 已驗證的規則）。
@@ -31,12 +31,15 @@ public struct TouchTracker {
     /// 目前還沒送出的觸點數。
     public var activeTouchCount: Int { pending.count }
 
+    /// 目前這根手指高亮的鍵（沒有則為 nil）。
+    public func currentKey(of id: Int) -> KeyFrame? { pending[id] }
+
     public mutating func began(id: Int, at point: CGPoint) -> [TouchAction] {
         var actions = flushPending()
         if let frame = hitTester.key(at: point) {
             pending[id] = frame
             order.append(id)
-            actions.append(.highlight(frame))
+            actions.append(.highlight(frame, touch: id))
         }
         return actions
     }
@@ -47,36 +50,40 @@ public struct TouchTracker {
         if next?.id == current.id { return [] }
         if let next {
             pending[id] = next
-            return [.unhighlight(current), .highlight(next)]
+            return [.unhighlight(current, touch: id), .highlight(next, touch: id)]
         }
         pending[id] = nil
         order.removeAll { $0 == id }
-        return [.unhighlight(current)]
+        return [.unhighlight(current, touch: id)]
     }
 
     public mutating func ended(id: Int) -> [TouchAction] {
         guard let frame = pending.removeValue(forKey: id) else { return [] }
         order.removeAll { $0 == id }
-        return [.commit(frame, byRollover: false)]
+        return [.commit(frame, touch: id, byRollover: false)]
     }
 
     public mutating func cancelled(id: Int) -> [TouchAction] {
         guard let frame = pending.removeValue(forKey: id) else { return [] }
         order.removeAll { $0 == id }
-        return [.unhighlight(frame)]
+        return [.unhighlight(frame, touch: id)]
     }
 
     /// 鍵盤消失或換頁時呼叫：取消所有高亮，不送出。
     public mutating func reset() -> [TouchAction] {
-        let actions = order.compactMap { id in pending[id].map(TouchAction.unhighlight) }
+        var actions: [TouchAction] = []
+        for id in order {
+            if let frame = pending[id] { actions.append(.unhighlight(frame, touch: id)) }
+        }
         pending.removeAll()
         order.removeAll()
         return actions
     }
 
     private mutating func flushPending() -> [TouchAction] {
-        let actions = order.compactMap { id in
-            pending[id].map { TouchAction.commit($0, byRollover: true) }
+        var actions: [TouchAction] = []
+        for id in order {
+            if let frame = pending[id] { actions.append(.commit(frame, touch: id, byRollover: true)) }
         }
         pending.removeAll()
         order.removeAll()

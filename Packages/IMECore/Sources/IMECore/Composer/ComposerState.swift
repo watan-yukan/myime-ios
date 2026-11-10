@@ -30,7 +30,7 @@ public struct ComposerState: Equatable, Sendable {
 }
 
 /// 組字內容顯示位置（FR-K13）。
-public enum ComposingDisplay: Equatable, Sendable {
+public enum ComposingDisplay: String, Codable, Equatable, Sendable {
     /// 顯示在鍵盤上方組字區（預設）；不對輸入框送 marked text。
     case bar
     /// 顯示在輸入框游標處（`setMarkedText`）。

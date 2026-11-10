@@ -1,7 +1,7 @@
 import Foundation
 
 /// 使用者在主 App 選的外觀：跟隨系統（預設）、固定淺色、固定深色（FR-T03）。
-public enum AppearanceSetting: String, Decodable, Equatable, Sendable {
+public enum AppearanceSetting: String, Codable, Equatable, Sendable {
     case system
     case light
     case dark

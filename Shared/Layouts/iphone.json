@@ -19,7 +19,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
-          { "type": "emoji", "width": 1.29 },
+          { "type": "langToggle", "width": 1.29 },
           { "type": "space", "width": 5.66 },
           { "type": "return", "width": 2.76 }
         ] }
@@ -36,7 +36,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.0 },
-          { "type": "emoji", "width": 1.0 },
+          { "type": "langToggle", "width": 1.0 },
           { "type": "space", "width": 6.47 },
           { "type": "return", "width": 2.1 }
         ] }
@@ -59,7 +59,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.29 },
-          { "type": "emoji", "width": 1.29 },
+          { "type": "langToggle", "width": 1.29 },
           { "type": "space", "width": 5.66 },
           { "type": "return", "width": 2.76 }
         ] }
@@ -80,7 +80,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.0 },
-          { "type": "emoji", "width": 1.0 },
+          { "type": "langToggle", "width": 1.0 },
           { "type": "space", "width": 6.47 },
           { "type": "return", "width": 2.1 }
         ] }
@@ -103,7 +103,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.29 },
-          { "type": "emoji", "width": 1.29 },
+          { "type": "langToggle", "width": 1.29 },
           { "type": "space", "width": 5.66 },
           { "type": "return", "width": 2.76 }
         ] }
@@ -124,7 +124,7 @@
         ] },
         { "keys": [
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.0 },
-          { "type": "emoji", "width": 1.0 },
+          { "type": "langToggle", "width": 1.0 },
           { "type": "space", "width": 6.47 },
           { "type": "return", "width": 2.1 }
         ] }
@@ -136,7 +136,7 @@
       "alpha": {
         "3": { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
-          { "type": "emoji", "width": 1.29 },
+          { "type": "langToggle", "width": 1.29 },
           { "output": "@", "width": 1.0 },
           { "type": "space", "width": 3.9 },
           { "output": ".", "width": 1.0 },
@@ -148,7 +148,7 @@
       "alpha": {
         "3": { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
-          { "type": "emoji", "width": 1.29 },
+          { "type": "langToggle", "width": 1.29 },
           { "output": "/", "width": 1.0 },
           { "output": ".com", "label": ".com", "width": 1.6 },
           { "type": "space", "width": 2.9 },

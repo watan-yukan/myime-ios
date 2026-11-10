@@ -113,9 +113,9 @@ final class TouchTests: XCTestCase {
 
     func testSingleTapCommitsOnRelease() {
         var t = tracker()
-        XCTAssertEqual(t.began(id: 1, at: CGPoint(x: 20, y: 20)), [.highlight(key(0))])
+        XCTAssertEqual(t.began(id: 1, at: CGPoint(x: 20, y: 20)), [.highlight(key(0), touch: 1)])
         XCTAssertEqual(t.activeTouchCount, 1)
-        XCTAssertEqual(t.ended(id: 1), [.commit(key(0), byRollover: false)])
+        XCTAssertEqual(t.ended(id: 1), [.commit(key(0), touch: 1, byRollover: false)])
         XCTAssertEqual(t.activeTouchCount, 0)
     }
 
@@ -123,10 +123,10 @@ final class TouchTests: XCTestCase {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))           // 按住 a
         let actions = t.began(id: 2, at: CGPoint(x: 70, y: 20))  // 第二指按 b
-        XCTAssertEqual(actions, [.commit(key(0), byRollover: true), .highlight(key(1))],
+        XCTAssertEqual(actions, [.commit(key(0), touch: 1, byRollover: true), .highlight(key(1), touch: 2)],
                        "a 先送出，再高亮 b，順序不亂")
         XCTAssertEqual(t.ended(id: 1), [], "a 已送出，抬起時不重複")
-        XCTAssertEqual(t.ended(id: 2), [.commit(key(1), byRollover: false)])
+        XCTAssertEqual(t.ended(id: 2), [.commit(key(1), touch: 2, byRollover: false)])
     }
 
     func testThreeFingersKeepArrivalOrder() {
@@ -134,8 +134,8 @@ final class TouchTests: XCTestCase {
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
         _ = t.began(id: 2, at: CGPoint(x: 70, y: 20))
         let actions = t.began(id: 3, at: CGPoint(x: 120, y: 20))
-        XCTAssertEqual(actions, [.commit(key(1), byRollover: true), .highlight(key(2))])
-        XCTAssertEqual(t.ended(id: 3), [.commit(key(2), byRollover: false)])
+        XCTAssertEqual(actions, [.commit(key(1), touch: 2, byRollover: true), .highlight(key(2), touch: 3)])
+        XCTAssertEqual(t.ended(id: 3), [.commit(key(2), touch: 3, byRollover: false)])
     }
 
     func testFastTypingNeverLosesOrReordersKeys() {
@@ -143,7 +143,7 @@ final class TouchTests: XCTestCase {
         var t = tracker()
         var committed: [String] = []
         func apply(_ actions: [TouchAction]) {
-            for case .commit(let frame, _) in actions { committed.append(frame.key.output ?? "") }
+            for case .commit(let frame, _, _) in actions { committed.append(frame.key.output ?? "") }
         }
         let sequence: [(Int, CGPoint)] = [
             (1, CGPoint(x: 20, y: 20)), (2, CGPoint(x: 70, y: 20)), (3, CGPoint(x: 120, y: 20)),
@@ -162,15 +162,15 @@ final class TouchTests: XCTestCase {
     func testSlidingToAnotherKeyRetargets() {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
-        XCTAssertEqual(t.moved(id: 1, to: CGPoint(x: 70, y: 20)), [.unhighlight(key(0)), .highlight(key(1))])
+        XCTAssertEqual(t.moved(id: 1, to: CGPoint(x: 70, y: 20)), [.unhighlight(key(0), touch: 1), .highlight(key(1), touch: 1)])
         XCTAssertEqual(t.moved(id: 1, to: CGPoint(x: 75, y: 25)), [], "還在同一個鍵")
-        XCTAssertEqual(t.ended(id: 1), [.commit(key(1), byRollover: false)], "送出滑到的那個鍵")
+        XCTAssertEqual(t.ended(id: 1), [.commit(key(1), touch: 1, byRollover: false)], "送出滑到的那個鍵")
     }
 
     func testSlidingOutsideCancels() {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
-        XCTAssertEqual(t.moved(id: 1, to: CGPoint(x: 500, y: 500)), [.unhighlight(key(0))])
+        XCTAssertEqual(t.moved(id: 1, to: CGPoint(x: 500, y: 500)), [.unhighlight(key(0), touch: 1)])
         XCTAssertEqual(t.ended(id: 1), [])
         XCTAssertEqual(t.activeTouchCount, 0)
     }
@@ -178,7 +178,7 @@ final class TouchTests: XCTestCase {
     func testCancelledTouchDoesNotCommit() {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
-        XCTAssertEqual(t.cancelled(id: 1), [.unhighlight(key(0))])
+        XCTAssertEqual(t.cancelled(id: 1), [.unhighlight(key(0), touch: 1)])
         XCTAssertEqual(t.ended(id: 1), [])
     }
 
@@ -192,14 +192,14 @@ final class TouchTests: XCTestCase {
     func testOutsideTouchStillFlushesPendingKeys() {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
-        XCTAssertEqual(t.began(id: 2, at: CGPoint(x: 900, y: 900)), [.commit(key(0), byRollover: true)])
+        XCTAssertEqual(t.began(id: 2, at: CGPoint(x: 900, y: 900)), [.commit(key(0), touch: 1, byRollover: true)])
     }
 
     func testResetUnhighlightsEverythingWithoutCommitting() {
         var t = tracker()
         _ = t.began(id: 1, at: CGPoint(x: 20, y: 20))
         _ = t.began(id: 2, at: CGPoint(x: 70, y: 20))  // a 已送出，只剩 b
-        XCTAssertEqual(t.reset(), [.unhighlight(key(1))])
+        XCTAssertEqual(t.reset(), [.unhighlight(key(1), touch: 2)])
         XCTAssertEqual(t.activeTouchCount, 0)
         XCTAssertEqual(t.ended(id: 2), [])
     }
