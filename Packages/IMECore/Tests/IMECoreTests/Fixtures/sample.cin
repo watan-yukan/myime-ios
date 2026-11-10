@@ -1,0 +1,32 @@
+# 虛構測試碼表：字根與字的對應全部是假的，只用來測試解析與查詢。
+# 這是 repo 中唯一允許存在的 .cin（R-LIU-4）。
+%gen_inp
+%ename SampleTable
+%cname 測試碼表
+%selkey 0123456789
+%encoding UTF-8
+%keyname begin
+a 甲
+b 乙
+c 丙
+d 丁
+, ，
+. 。
+%keyname end
+%chardef begin
+a 一
+a 二
+ab 三
+abc 四
+abcd 五
+b 六
+ba 七
+bad 八
+c 九
+cab 十
+dd 百
+ka, か
+ka. カ
+tsu, つ
+xtsu, っ
+%chardef end
