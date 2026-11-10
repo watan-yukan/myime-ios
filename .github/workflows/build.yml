@@ -26,6 +26,18 @@ jobs:
           fi
           echo "OK：沒有碼表檔"
 
+  # 輸入引擎單元測試（NFR-10）：純 Swift，在 Linux 上跑，快且不佔 macOS runner
+  imecore:
+    needs: guard
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Test IMECore
+        run: swift test --package-path Packages/IMECore --parallel
+
   ios:
     needs: guard
     runs-on: macos-latest
