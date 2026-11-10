@@ -140,6 +140,19 @@ final class TableIndexTests: XCTestCase {
         }
     }
 
+    func testSkippingChecksumStillOpensAndCanBeVerifiedLater() throws {
+        var data = TableIndexBuilder.build(from: try sampleTable())
+        XCTAssertTrue(try TableIndex(data: data).checksumIsValid())
+
+        data[75] ^= 0xFF  // Header 未使用的位元組：不影響查詢，但檢查碼會不符
+        XCTAssertThrowsError(try TableIndex(data: data)) {
+            XCTAssertEqual($0 as? TableIndexError, .checksumMismatch)
+        }
+        let index = try TableIndex(data: data, verifyChecksum: false)
+        XCTAssertEqual(index.candidates(for: "a"), ["一", "二"], "略過檢查碼仍可正常查詢")
+        XCTAssertFalse(index.checksumIsValid(), "之後仍可補驗出檔案已變動")
+    }
+
     func testRejectsBadMagic() throws {
         var data = TableIndexBuilder.build(from: try sampleTable())
         data[0] = UInt8(ascii: "X")

@@ -29,11 +29,14 @@ public struct TableIndex: Sendable {
     private let reverseOffset: Int
 
     /// 以 memory-map 開啟索引檔。
-    public init(contentsOf url: URL) throws {
-        try self.init(data: Data(contentsOf: url, options: .alwaysMapped))
+    ///
+    /// - Parameter verifyChecksum: 是否讀完整個檔案驗證 CRC32。預設開啟（主 App 匯入與啟動時使用）；
+    ///   鍵盤冷啟動傳 `false`，只檢查檔頭與區段範圍，避免啟動時掃過整個檔案（NFR-15）。
+    public init(contentsOf url: URL, verifyChecksum: Bool = true) throws {
+        try self.init(data: Data(contentsOf: url, options: .alwaysMapped), verifyChecksum: verifyChecksum)
     }
 
-    public init(data: Data) throws {
+    public init(data: Data, verifyChecksum: Bool = true) throws {
         let reader = ByteReader(data: data)
         let headerSize = TableIndexFormat.headerSize
         guard reader.count >= headerSize + TableIndexFormat.footerSize else { throw TableIndexError.truncated }
@@ -43,8 +46,10 @@ public struct TableIndex: Sendable {
         guard version == IMECore.tableFormatVersion else { throw TableIndexError.unsupportedVersion(version) }
 
         let bodyLength = reader.count - TableIndexFormat.footerSize
-        let storedCRC = reader.u32(bodyLength)
-        guard BinaryIO.crc32(reader.bytes(0, bodyLength)) == storedCRC else { throw TableIndexError.checksumMismatch }
+        if verifyChecksum {
+            let storedCRC = reader.u32(bodyLength)
+            guard BinaryIO.crc32(reader.bytes(0, bodyLength)) == storedCRC else { throw TableIndexError.checksumMismatch }
+        }
 
         func section(_ at: Int) throws -> (Int, Int) {
             let offset = Int(reader.u32(at)), length = Int(reader.u32(at + 4))
@@ -97,6 +102,12 @@ public struct TableIndex: Sendable {
             sourceFingerprint: Array(reader.bytes(TableIndexFormat.HeaderOffset.fingerprint, 16)),
             extraCodeKeys: extraKeys
         )
+    }
+
+    /// 讀完整個檔案驗證 CRC32（以 `verifyChecksum: false` 開啟後，可在背景補驗）。
+    public func checksumIsValid() -> Bool {
+        let bodyLength = reader.count - TableIndexFormat.footerSize
+        return BinaryIO.crc32(reader.bytes(0, bodyLength)) == reader.u32(bodyLength)
     }
 
     // MARK: - 查詢

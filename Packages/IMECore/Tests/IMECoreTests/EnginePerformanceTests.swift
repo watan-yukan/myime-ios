@@ -71,14 +71,30 @@ final class EnginePerformanceTests: XCTestCase {
         defer { try? FileManager.default.removeItem(at: url) }
         try TableIndexBuilder.build(from: table).write(to: url)
 
+        // 鍵盤冷啟動：不掃整個檔案（略過 CRC，由主 App 匯入與啟動時驗證）
         let start = ProcessInfo.processInfo.systemUptime
-        let index = try TableIndex(contentsOf: url)
+        let index = try TableIndex(contentsOf: url, verifyChecksum: false)
         var composer = Composer(source: index)
         composer.handle(.key(Array(codes[0])[0]))
         let elapsed = (ProcessInfo.processInfo.systemUptime - start) * 1000
 
         XCTAssertLessThan(elapsed, 100, "開啟索引並處理第一個按鍵花了 \(elapsed) ms（NFR-15）")
         XCTAssertTrue(composer.state.isComposing)
+    }
+
+    /// 主 App 匯入 / 啟動時的完整驗證：整個檔案算一次 CRC32。
+    /// CI 是未最佳化的 debug 編譯，門檻放寬；實機 Release 版會快很多。
+    func testFullChecksumVerificationIsAffordable() throws {
+        let (table, _) = try makeLargeTable()
+        let data = TableIndexBuilder.build(from: table)
+
+        let start = ProcessInfo.processInfo.systemUptime
+        let index = try TableIndex(data: data)
+        let valid = index.checksumIsValid()
+        let elapsed = (ProcessInfo.processInfo.systemUptime - start) * 1000
+
+        XCTAssertTrue(valid)
+        XCTAssertLessThan(elapsed, 1_000, "完整驗證（含檔案 \(data.count) bytes）花了 \(elapsed) ms")
     }
 
     // MARK: - 匯入（建立索引）與大小
