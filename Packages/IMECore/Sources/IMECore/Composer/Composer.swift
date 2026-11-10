@@ -5,8 +5,7 @@ import Foundation
 /// 純邏輯：輸入 `InputEvent`，更新 `state` 並回傳要對輸入框做的 `OutputAction`，
 /// 不接觸 UIKit，所有行為都能單元測試。
 ///
-/// 尚待細化的事件：
-/// - Shift 直輸大寫、候選列英文選項、空白上滑：#8
+/// 中英混打（#8）：候選列英文選項、Shift 直輸大寫、空白上滑、超過碼長不判錯碼。
 public struct Composer {
     /// 組字內容最長保留的字母數（超過碼長仍保留，供送出英文，FR-E05）。
     public static let maxBufferLength = 32
@@ -24,6 +23,12 @@ public struct Composer {
     /// 候選列目前顯示的第一個候選位置（展開候選表翻頁時由 UI 設定）；數字選字以此為起點。
     /// 每次字根改變都會歸零。
     public var selectionWindowStart = 0
+    /// 空白鍵上滑直輸英文（FR-E03）；關閉時 `.swipeUpSpace` 不動作（FR-E04，預設開啟）。
+    public var spaceSwipeUpEnglish = true
+    /// 以英文選項或空白上滑送出英文後，自動補一個空格（FR-E04，預設關閉）。
+    public var appendSpaceAfterEnglish = false
+    /// 送出英文時把第一個字母轉大寫（由 UI 依 `AutoCapitalization` 判斷後設定，FR-E07）。
+    public var capitalizeEnglishSend = false
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
@@ -50,7 +55,7 @@ public struct Composer {
         case .key(let character):
             return handleKey(character)
         case .shiftedKey(let character):
-            // 暫定（#8 細化）：先送出組字中的內容，再直輸大寫
+            // Shift + 字母：先送出組字中的內容，再直輸大寫，不進入組字（FR-E02）
             return commitForPassthrough() + [.insert(String(character).uppercased())]
         case .space:
             return handleSpace()
@@ -64,8 +69,12 @@ public struct Composer {
             guard state.isComposing else { return [.insert("\n")] }
             return commit(state.code)
         case .swipeUpSpace:
+            guard spaceSwipeUpEnglish else { return [] }
             guard state.isComposing else { return [.insert(" ")] }
-            return commit(state.code)
+            return sendEnglish()
+        case .selectEnglishOption:
+            guard state.isComposing else { return [] }
+            return sendEnglish()
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
             punctuation.reset()
@@ -86,8 +95,18 @@ public struct Composer {
         case .space, .swipeUpSpace: return [.insert(" ")]
         case .returnKey: return [.insert("\n")]
         case .backspace: return [.deleteBackward]
-        case .selectCandidate, .contextChanged, .toggleInputMode: return []
+        case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode: return []
         }
+    }
+
+    /// 把組字內容當英文送出（FR-E01、E03、E04、E07）。
+    private mutating func sendEnglish() -> [OutputAction] {
+        var text = state.code
+        if capitalizeEnglishSend, let first = text.first {
+            text = first.uppercased() + text.dropFirst()
+        }
+        if appendSpaceAfterEnglish { text += " " }
+        return commit(text)
     }
 
     private mutating func handleKey(_ character: Character) -> [OutputAction] {
