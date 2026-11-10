@@ -14,9 +14,14 @@ public struct Composer {
 
     public private(set) var state: ComposerState = .idle
     public var display: ComposingDisplay
+    /// 目前輸入模式（FR-K08），以 `.toggleInputMode` 切換。
+    public private(set) var mode: InputMode = .chinese
+    /// 中文模式下，非字根的半形符號轉成全形（FR-K09）。
+    public var fullWidthPunctuation = true
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
+    private var punctuation = Punctuation()
 
     public init(source: any CandidateSource, display: ComposingDisplay = .bar) {
         self.source = source
@@ -27,7 +32,15 @@ public struct Composer {
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
     @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
+        if mode == .english, event != .toggleInputMode {
+            return handleEnglish(event)
+        }
         switch event {
+        case .toggleInputMode:
+            // 切換前先送出組字中的內容，避免字根殘留
+            let output = commitForPassthrough()
+            mode = mode == .chinese ? .english : .chinese
+            return output
         case .key(let character):
             return handleKey(character)
         case .shiftedKey(let character):
@@ -49,6 +62,7 @@ public struct Composer {
             return commit(state.code)
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
+            punctuation.reset()
             guard state.isComposing else { return [] }
             state = .idle
             return display == .inline ? [.clearMarked] : []
@@ -57,11 +71,24 @@ public struct Composer {
 
     // MARK: - 事件處理
 
+    /// 英文模式：按鍵直接輸出，不組字（FR-K08）。
+    private mutating func handleEnglish(_ event: InputEvent) -> [OutputAction] {
+        switch event {
+        case .key(let character): return [.insert(String(character))]
+        case .shiftedKey(let character): return [.insert(String(character).uppercased())]
+        case .space, .swipeUpSpace: return [.insert(" ")]
+        case .returnKey: return [.insert("\n")]
+        case .backspace: return [.deleteBackward]
+        case .selectCandidate, .contextChanged, .toggleInputMode: return []
+        }
+    }
+
     private mutating func handleKey(_ character: Character) -> [OutputAction] {
         let key = character.lowercased().first ?? character
         guard codeKeys.contains(key) else {
-            // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入
-            return commitForPassthrough() + [.insert(String(character))]
+            // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入；符號轉全形（FR-K09）
+            let text = fullWidthPunctuation ? punctuation.convert(character) : String(character)
+            return commitForPassthrough() + [.insert(text)]
         }
         guard state.code.count < Self.maxBufferLength else { return [] }
         update(code: state.code + String(key))

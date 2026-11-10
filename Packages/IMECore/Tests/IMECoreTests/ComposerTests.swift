@@ -182,7 +182,7 @@ final class ComposerTests: XCTestCase {
     func testNonCodeKeyWithInvalidCodeSendsRawLetters() {
         var c = composer()
         type("az", into: &c)
-        XCTAssertEqual(c.handle(.key("!")), [.insert("az"), .insert("!")])
+        XCTAssertEqual(c.handle(.key("!")), [.insert("az"), .insert("！")], "中文模式符號轉全形（#6）")
     }
 
     // MARK: - 其他事件的基本行為（#7、#8 再細化）
