@@ -13,6 +13,8 @@ public struct TableIndex: Sendable {
         public var codeCount: Int
         public var valueCount: Int
         public var sourceFingerprint: [UInt8]
+        /// 碼表字根中實際用到的 a–z 以外的字元（例如 `,` `.`）。
+        public var extraCodeKeys: String
 
         public var displayName: String {
             !cname.isEmpty ? cname : (!ename.isEmpty ? ename : "未命名碼表")
@@ -80,6 +82,10 @@ public struct TableIndex: Sendable {
             keyNames.append(CinKeyName(key: key, label: label))
         }
 
+        let extraCount = min(Int(reader.u8(TableIndexFormat.HeaderOffset.extraKeys)), TableIndexFormat.maxExtraKeys)
+        let extraKeys = String(
+            decoding: reader.bytes(TableIndexFormat.HeaderOffset.extraKeys + 1, extraCount), as: UTF8.self)
+
         self.reader = reader
         self.codesOffset = codesOffset
         self.valuesOffset = valuesOffset
@@ -88,7 +94,8 @@ public struct TableIndex: Sendable {
             ename: ename, cname: cname, selkey: selkey, keyNames: keyNames,
             maxCodeLength: Int(reader.u8(TableIndexFormat.HeaderOffset.maxCodeLength)),
             codeCount: codeCount, valueCount: valueCount,
-            sourceFingerprint: Array(reader.bytes(TableIndexFormat.HeaderOffset.fingerprint, 16))
+            sourceFingerprint: Array(reader.bytes(TableIndexFormat.HeaderOffset.fingerprint, 16)),
+            extraCodeKeys: extraKeys
         )
     }
 
