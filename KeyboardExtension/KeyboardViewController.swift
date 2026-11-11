@@ -71,12 +71,16 @@ final class KeyboardViewController: UIInputViewController {
     private var pageForcedByKeyboardType = false
     private let candidateBarHeight: CGFloat = 44
 
+    /// 鍵盤的主 view（`inputView`；取不到時退回 `view`）。
+    private var rootView: UIView { inputView ?? view }
+
     // MARK: - 生命週期
 
     override func loadView() {
         let root = KeyboardRootView(frame: .zero, inputViewStyle: .keyboard)
         root.allowsSelfSizing = true
         inputView = root
+        if !isViewLoaded { view = root }  // 後備：指派沒有成為主 view 時，直接設定 view
     }
 
     override func viewDidLoad() {
@@ -87,7 +91,7 @@ final class KeyboardViewController: UIInputViewController {
         layoutFile = LayoutCatalog.layout(isPad: isPad)
         keysView.showsPreview = !isPad  // iPad 沒有按下放大預覽（比照原生）
 
-        guard let root = inputView else { return }
+        let root: UIView = rootView
         root.addSubview(candidateBar)
         root.addSubview(keysView)
         setupGlobeButton()
@@ -135,7 +139,7 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
         super.viewWillTransition(to: size, with: coordinator)
         configuredKey = ""
-        inputView?.setNeedsLayout()
+        rootView.setNeedsLayout()
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
@@ -364,7 +368,7 @@ final class KeyboardViewController: UIInputViewController {
             systemIsDark: traitCollection.userInterfaceStyle == .dark,
             host: hostAppearance())
         let palette = theme.palette(isDark: isDark)
-        inputView?.backgroundColor = palette[.keyboardBackground].uiColor
+        rootView.backgroundColor = palette[.keyboardBackground].uiColor
         keysView.applyTheme(palette: palette, metrics: theme.metrics)
         candidateBar.applyTheme(palette: palette, metrics: theme.metrics)
         candidatePanel.applyTheme(palette: palette)
@@ -460,13 +464,13 @@ final class KeyboardViewController: UIInputViewController {
         savePhrasesIfNeeded()
         // 頁面切換（或情境變化）需要重新排版
         if configuredKey != currentConfigKey() {
-            inputView?.setNeedsLayout()
+            rootView.setNeedsLayout()
         }
     }
 
     private func currentConfigKey() -> String {
         guard let session else { return "" }
-        let width = Int(inputView?.bounds.width ?? 0)
+        let width = Int(rootView.bounds.width)
         return "\(session.page)|\(layoutVariant ?? "-")|\(isLandscape)|\(width)"
     }
 
@@ -475,7 +479,8 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func layoutKeyboard() {
-        guard let root = inputView, let layoutFile, let session else { return }
+        let root = rootView
+        guard let layoutFile, let session else { return }
         let width = root.bounds.width
         guard width > 0 else { return }
 
