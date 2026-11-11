@@ -1,161 +1,457 @@
 import UIKit
 import OSLog
+import IMECore
 
-/// Spike 鍵盤：驗證側載、啟用、快打、地球鍵、共用容器、剪貼簿、碼表匯入。
+/// 鍵盤擴充的根 view：宣告支援按鍵音（`playInputClick` 需要）。
+final class KeyboardRootView: UIInputView, UIInputViewAudioFeedback {
+    var enableInputClicksWhenVisible: Bool { true }
+}
+
+/// 把 `UITextDocumentProxy` 包成引擎看得懂的輸入框；記錄最後一次自己改動輸入框的時間，
+/// 用來分辨 `textDidChange` 是自己造成的還是使用者移動了游標。
+final class ProxyTextOutput: TextOutput {
+    weak var proxy: UITextDocumentProxy?
+    private(set) var lastEditTime: TimeInterval = 0
+
+    private func touch() {
+        lastEditTime = ProcessInfo.processInfo.systemUptime
+    }
+
+    func insertText(_ text: String) {
+        touch()
+        proxy?.insertText(text)
+    }
+
+    func deleteBackward() {
+        touch()
+        proxy?.deleteBackward()
+    }
+
+    func setMarkedText(_ text: String) {
+        touch()
+        proxy?.setMarkedText(text, selectedRange: NSRange(location: text.utf16.count, length: 0))
+    }
+
+    func unmarkText() {
+        touch()
+        proxy?.unmarkText()
+    }
+
+    var textBeforeCursor: String? {
+        proxy?.documentContextBeforeInput
+    }
+}
+
+/// MyIME 鍵盤：嘸蝦米輸入（碼表由主 App 匯入）。
 /// 日誌只記事件與數量，絕不記錄使用者輸入或剪貼簿內容（NFR-06）。
 final class KeyboardViewController: UIInputViewController {
     private let logger = Logger(subsystem: AppConstants.logSubsystem, category: "keyboard")
 
-    private let statusLabel = UILabel()
-    private let keyboardView = KeyboardView()
+    private let candidateBar = CandidateBarView()
+    private let keysView = KeyboardKeysView()
+    private let candidatePanel = CandidatePanelView()
+    private let emojiPanel = EmojiPanelView()
+    private let output = ProxyTextOutput()
+    private let haptic = UIImpactFeedbackGenerator(style: .light)
 
-    private let statusBarHeight: CGFloat = 44   // 候選列位置永遠保留（FR-U21）
-    private var containerStatus = ""
-    private var clipboardStatus = "📋 測試剪貼簿"
-    private var keyCount = 0
-    private var rolloverCount = 0
+    private var layoutFile: KeyboardLayoutFile?
+    private var session: KeyboardSession?
+    private var settings = KeyboardSettings()
+    private var theme = BuiltinThemes.native()
+    private var isDark = false
+    private var tableStamp: Date?
+    private var tableHint: String? = "請先在 MyIME App 匯入碼表"
+
+    private var heightConstraint: NSLayoutConstraint?
+    private var configuredKey = ""
+    private var pageForcedByKeyboardType = false
+    private let candidateBarHeight: CGFloat = 44
+
+    // MARK: - 生命週期
+
+    override func loadView() {
+        let root = KeyboardRootView(frame: .zero, inputViewStyle: .keyboard)
+        root.allowsSelfSizing = true
+        inputView = root
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
         logger.info("keyboard viewDidLoad")
-        setupViews()
+        output.proxy = textDocumentProxy
+        layoutFile = LayoutCatalog.iphone()
 
-        keyboardView.onKey = { [weak self] key, byRollover in
-            self?.handle(key, byRollover: byRollover)
+        guard let root = inputView else { return }
+        root.addSubview(candidateBar)
+        root.addSubview(keysView)
+        root.addSubview(candidatePanel)
+        root.addSubview(emojiPanel)
+        candidatePanel.isHidden = true
+        emojiPanel.isHidden = true
+
+        wireCallbacks()
+        loadSettings()
+        loadSession()
+        applyTheme()
+
+        registerForTraitChanges([UITraitUserInterfaceStyle.self]) { (self: KeyboardViewController, _: UITraitCollection) in
+            self.applyTheme()
         }
-        keyboardView.globeButton.addTarget(
-            self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         writeHeartbeat()
-        containerStatus = readContainerStatus()
-        updateStatusLabel()
+        loadSettings()
+        loadSession()
+        applyTheme()
+        hidePanels()
+        session?.autocapitalizationType = autocapitalizationType()
+        session?.contextChanged()
+        applyKeyboardTypeDefaults()
+        refreshEverything()
     }
 
-    // MARK: - Setup
-
-    private func setupViews() {
-        guard let inputView else { return }
-
-        statusLabel.numberOfLines = 2
-        statusLabel.font = .systemFont(ofSize: 12)
-        statusLabel.textColor = .secondaryLabel
-        statusLabel.adjustsFontSizeToFitWidth = true
-        statusLabel.minimumScaleFactor = 0.7
-        statusLabel.translatesAutoresizingMaskIntoConstraints = false
-        keyboardView.translatesAutoresizingMaskIntoConstraints = false
-
-        inputView.addSubview(statusLabel)
-        inputView.addSubview(keyboardView)
-
-        let isPad = UIDevice.current.userInterfaceIdiom == .pad
-        let keysHeight: CGFloat = isPad ? 300 : 216
-        let height = inputView.heightAnchor.constraint(equalToConstant: statusBarHeight + keysHeight)
-        height.priority = .defaultHigh   // 避免與系統約束衝突
-
-        NSLayoutConstraint.activate([
-            height,
-            statusLabel.topAnchor.constraint(equalTo: inputView.topAnchor),
-            statusLabel.leadingAnchor.constraint(equalTo: inputView.leadingAnchor, constant: 8),
-            statusLabel.trailingAnchor.constraint(equalTo: inputView.trailingAnchor, constant: -8),
-            statusLabel.heightAnchor.constraint(equalToConstant: statusBarHeight),
-
-            keyboardView.topAnchor.constraint(equalTo: statusLabel.bottomAnchor),
-            keyboardView.leadingAnchor.constraint(equalTo: inputView.leadingAnchor),
-            keyboardView.trailingAnchor.constraint(equalTo: inputView.trailingAnchor),
-            keyboardView.bottomAnchor.constraint(equalTo: inputView.bottomAnchor),
-        ])
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        keysView.cancelAllTouches()
+        session?.contextChanged()
     }
 
-    // MARK: - Keys
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        layoutKeyboard()
+    }
 
-    private func handle(_ key: Key, byRollover: Bool) {
-        switch key {
-        case .character(let text):
-            textDocumentProxy.insertText(text)
-        case .space:
-            textDocumentProxy.insertText(" ")
-        case .backspace:
-            textDocumentProxy.deleteBackward()
-        case .returnKey:
-            textDocumentProxy.insertText("\n")
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        configuredKey = ""
+        inputView?.setNeedsLayout()
+    }
+
+    override func textDidChange(_ textInput: UITextInput?) {
+        super.textDidChange(textInput)
+        // 自己剛改過輸入框時，系統也會通知；只有使用者移動游標、換欄位才需要清除組字
+        let sinceOwnEdit = ProcessInfo.processInfo.systemUptime - output.lastEditTime
+        if sinceOwnEdit > 0.3 {
+            session?.autocapitalizationType = autocapitalizationType()
+            session?.contextChanged()
+            applyKeyboardTypeDefaults()
+            refreshEverything()
+        }
+    }
+
+    // MARK: - 載入
+
+    private func loadSettings() {
+        guard let url = SharedStorage.url(SharedStorage.FileName.settings) else { return }
+        settings = SettingsStore(url: url).load().settings
+        session?.settings = settings
+    }
+
+    /// 載入碼表與引擎；碼表沒有變動時沿用現有引擎，不會讓使用者的中 / 英模式被重置。
+    private func loadSession() {
+        let index = TableProvider.loadForKeyboard(hasFullAccess: hasFullAccess)
+        let stamp = TableProvider.cacheStamp
+        if session != nil, stamp == tableStamp { return }
+        tableStamp = stamp
+
+        let source: any CandidateSource
+        if let index {
+            source = index
+            tableHint = nil
+        } else {
+            source = DictionaryCandidateSource([:])
+            tableHint = hasFullAccess ? "請先在 MyIME App 匯入碼表" : "請開啟完整取用並在 App 匯入碼表"
+        }
+        let newSession = KeyboardSession(source: source, settings: settings)
+        newSession.output = output
+        newSession.onChange = { [weak self] in self?.refreshEverything() }
+        session = newSession
+        configuredKey = ""
+        logger.info("session loaded, hasTable=\(index != nil)")
+    }
+
+    private func wireCallbacks() {
+        keysView.onTap = { [weak self] key, _ in self?.handleTap(key) }
+        keysView.onKeyDown = { [weak self] _ in self?.keyFeedback() }
+        keysView.onSpaceSwipeUp = { [weak self] in self?.session?.swipeUpSpace() }
+        keysView.onBackspaceRepeat = { [weak self] count in self?.session?.repeatBackspace(count: count) }
+        keysView.onTrackpadMove = { [weak self] steps in self?.moveCursor(by: steps) }
+        keysView.onAlternateSelected = { [weak self] text in self?.insertAlternate(text) }
+        keysView.contentProvider = { [weak self] key in self?.content(for: key) ?? KeyContent() }
+        keysView.alternatesProvider = { [weak self] key in self?.alternates(for: key) ?? [] }
+        keysView.previewHeadroom = candidateBarHeight
+
+        candidateBar.onSelectCandidate = { [weak self] index in self?.session?.selectCandidate(index) }
+        candidateBar.onSelectEnglish = { [weak self] in self?.session?.selectEnglishOption() }
+        candidateBar.onExpand = { [weak self] in self?.showCandidatePanel() }
+        candidateBar.onTool = { [weak self] tool in self?.handleTool(tool) }
+
+        candidatePanel.onSelect = { [weak self] index in
+            self?.session?.selectCandidate(index)
+            self?.candidatePanel.isHidden = true
+        }
+        candidatePanel.onClose = { [weak self] in self?.candidatePanel.isHidden = true }
+
+        emojiPanel.onInsert = { [weak self] emoji in
+            self?.keyFeedback()
+            self?.textDocumentProxy.insertText(emoji)
+        }
+        emojiPanel.onBackspace = { [weak self] in
+            self?.keyFeedback()
+            self?.textDocumentProxy.deleteBackward()
+        }
+        emojiPanel.onClose = { [weak self] in self?.emojiPanel.isHidden = true }
+    }
+
+    // MARK: - 按鍵處理
+
+    private func handleTap(_ key: LayoutKey) {
+        switch key.type {
         case .globe:
-            // 觸控落在地球鍵附近縫隙時才會走到這裡；正常點地球鍵由 globeButton 處理
             advanceToNextInputMode()
-            return
-        case .clipboardTest:
-            testClipboard()
-            updateStatusLabel()
-            return
-        }
-
-        keyCount += 1
-        if byRollover {
-            rolloverCount += 1
-        }
-        updateStatusLabel()
-    }
-
-    private func updateStatusLabel() {
-        statusLabel.text = """
-        \(containerStatus)
-        按鍵 \(keyCount)｜重疊提早送出 \(rolloverCount)｜\(clipboardStatus)
-        """
-    }
-
-    // MARK: - Spike checks
-
-    /// Spike 0.10：完整取用下讀取剪貼簿，只顯示字數，不顯示內容。
-    private func testClipboard() {
-        guard hasFullAccess else {
-            clipboardStatus = "剪貼簿：需開啟完整取用"
-            return
-        }
-        let pasteboard = UIPasteboard.general
-        if pasteboard.hasStrings {
-            let count = pasteboard.string?.count ?? 0
-            clipboardStatus = "剪貼簿：讀到 \(count) 字"
-            logger.info("clipboard read ok, length=\(count)")
-        } else {
-            clipboardStatus = "剪貼簿：沒有文字"
-            logger.info("clipboard has no strings")
+        case .dismiss:
+            dismissKeyboard()
+        case .emoji:
+            showEmojiPanel()
+        case .tab:
+            textDocumentProxy.insertText("\t")
+        default:
+            session?.tap(key)
         }
     }
 
-    /// Spike 0.9 / 0.11：讀取主 App 寫入的測試資料與匯入的碼表檔頭。
-    private func readContainerStatus() -> String {
-        let access = hasFullAccess ? "完整取用:開" : "完整取用:關"
-        guard SharedStorage.containerURL != nil else {
-            logger.error("app group container unavailable")
-            let groups = SigningInfo.current.map { "描述檔群組 \($0.appGroups.count) 個" } ?? "讀不到描述檔"
-            return "\(access)｜共用容器:無法使用（\(groups)）"
+    private func handleTool(_ tool: CandidateBarView.Tool) {
+        switch tool {
+        case .emoji: showEmojiPanel()
+        case .theme: cycleTheme()
+        case .dismiss: dismissKeyboard()
         }
+    }
 
-        var parts = [access]
-        do {
-            let ping = try SharedStorage.read(SpikePing.self, from: SharedStorage.FileName.ping)
-            parts.append("App 寫入 \(ping.writtenAt.formatted(date: .omitted, time: .standard))")
-        } catch {
-            parts.append("讀不到 App 測試資料")
-            logger.error("read ping failed: \(error.localizedDescription, privacy: .public)")
+    private func keyFeedback() {
+        if settings.haptics, hasFullAccess {
+            haptic.impactOccurred()
+            haptic.prepare()
         }
+        if settings.keySound {
+            UIDevice.current.playInputClick()
+        }
+    }
 
-        if let tableURL = SharedStorage.url(SharedStorage.FileName.importedTable),
-           FileManager.default.fileExists(atPath: tableURL.path) {
-            do {
-                let header = try CinHeaderReader.read(url: tableURL)
-                parts.append("碼表:\(header.displayName)(\(header.encoding), \(header.byteSize / 1024)KB)")
-            } catch {
-                parts.append("碼表讀取失敗")
-                logger.error("read table header failed: \(error.localizedDescription, privacy: .public)")
+    private func moveCursor(by steps: Int) {
+        if session?.composerState.isComposing == true { session?.contextChanged() }
+        textDocumentProxy.adjustTextPosition(byCharacterOffset: steps)
+    }
+
+    private func insertAlternate(_ text: String) {
+        textDocumentProxy.insertText(text)
+        session?.refreshAutoCapitalization()
+        refreshEverything()
+    }
+
+    private func alternates(for key: LayoutKey) -> [String] {
+        guard let session, key.type == .char, let output = key.output else { return [] }
+        // 字母在中文模式是字根，不出替代字元；符號任何模式都可以
+        let isLetter = output.first?.isLetter == true
+        if isLetter, session.mode == .chinese { return [] }
+        return AlternateCharacters.options(for: output, uppercase: session.showsUppercase)
+    }
+
+    // MARK: - 面板
+
+    private func showCandidatePanel() {
+        guard let session else { return }
+        let keysFrame = keysView.frame
+        candidatePanel.frame = keysFrame
+        candidatePanel.applyTheme(palette: theme.palette(isDark: isDark))
+        candidatePanel.layoutIfNeeded()
+        candidatePanel.show(candidates: session.composerState.candidates, startIndex: candidateBar.visibleCandidateCount)
+        candidatePanel.isHidden = false
+    }
+
+    private func showEmojiPanel() {
+        emojiPanel.frame = keysView.frame
+        emojiPanel.applyTheme(palette: theme.palette(isDark: isDark))
+        emojiPanel.reload()
+        emojiPanel.isHidden = false
+    }
+
+    private func hidePanels() {
+        candidatePanel.isHidden = true
+        emojiPanel.isHidden = true
+    }
+
+    // MARK: - 主題與外觀
+
+    private func cycleTheme() {
+        let ids = ThemeCatalog.builtinIDs
+        let current = ids.firstIndex(of: settings.theme.id) ?? 0
+        settings.theme.id = ids[(current + 1) % ids.count]
+        if let url = SharedStorage.url(SharedStorage.FileName.settings) {
+            try? SettingsStore(url: url).save(settings)
+        }
+        session?.settings = settings
+        applyTheme()
+    }
+
+    private func hostAppearance() -> HostKeyboardAppearance {
+        switch textDocumentProxy.keyboardAppearance {
+        case .dark: return .dark
+        case .light: return .light
+        default: return .unspecified
+        }
+    }
+
+    private func applyTheme() {
+        theme = ThemeCatalog.theme(id: settings.theme.id)
+        isDark = ThemeAppearance.isDark(
+            setting: settings.theme.appearance,
+            systemIsDark: traitCollection.userInterfaceStyle == .dark,
+            host: hostAppearance())
+        let palette = theme.palette(isDark: isDark)
+        inputView?.backgroundColor = palette[.keyboardBackground].uiColor
+        keysView.applyTheme(palette: palette, metrics: theme.metrics)
+        candidateBar.applyTheme(palette: palette, metrics: theme.metrics)
+        candidatePanel.applyTheme(palette: palette)
+        emojiPanel.applyTheme(palette: palette)
+        keysView.refreshContent()
+    }
+
+    // MARK: - 輸入框情境
+
+    private func autocapitalizationType() -> AutocapitalizationType {
+        switch textDocumentProxy.autocapitalizationType {
+        case .some(.none): return .none
+        case .some(.words): return .words
+        case .some(.allCharacters): return .allCharacters
+        default: return .sentences
+        }
+    }
+
+    private var layoutVariant: String? {
+        switch textDocumentProxy.keyboardType {
+        case .some(.emailAddress): return "email"
+        case .some(.URL): return "url"
+        default: return nil
+        }
+    }
+
+    /// 數字、電話鍵盤欄位一開始就顯示數字頁（FR-U11）。
+    private func applyKeyboardTypeDefaults() {
+        switch textDocumentProxy.keyboardType {
+        case .some(.numberPad), .some(.decimalPad), .some(.phonePad), .some(.asciiCapableNumberPad):
+            session?.switchPage(to: "numbers")
+            pageForcedByKeyboardType = true
+        default:
+            // 離開數字欄位後，回到字母頁
+            if pageForcedByKeyboardType {
+                session?.switchPage(to: "alpha")
+                pageForcedByKeyboardType = false
             }
-        } else {
-            parts.append("未匯入碼表")
         }
-        return parts.joined(separator: "｜")
     }
+
+    // MARK: - 畫面
+
+    private func content(for key: LayoutKey) -> KeyContent {
+        guard let session else { return KeyContent() }
+        switch key.type {
+        case .char:
+            let base = key.output ?? ""
+            let isLetter = base.first?.isLetter == true
+            let text = isLetter ? (session.showsUppercase ? base.uppercased() : base.lowercased()) : base
+            return KeyContent(text: key.label ?? text)
+        case .shift:
+            switch session.shift.mode {
+            case .off: return KeyContent(symbol: "shift")
+            case .once: return KeyContent(symbol: "shift.fill")
+            case .locked: return KeyContent(symbol: "capslock.fill")
+            }
+        case .backspace: return KeyContent(symbol: "delete.left")
+        case .space: return KeyContent()
+        case .returnKey: return returnKeyContent()
+        case .page: return KeyContent(text: key.label, isFunctionText: true)
+        case .langToggle: return KeyContent(text: session.mode == .chinese ? "中" : "英", isFunctionText: true)
+        case .globe: return KeyContent(symbol: "globe")
+        case .emoji: return KeyContent(symbol: "face.smiling")
+        case .dismiss: return KeyContent(symbol: "keyboard.chevron.compact.down")
+        case .tab: return KeyContent(symbol: "arrow.right.to.line")
+        case .spacer: return KeyContent()
+        }
+    }
+
+    /// 依輸入框的 `returnKeyType` 改變 Return 鍵（FR-U10）。
+    private func returnKeyContent() -> KeyContent {
+        switch textDocumentProxy.returnKeyType ?? .default {
+        case .go: return KeyContent(text: "前往", isAction: true, isFunctionText: true)
+        case .search, .google, .yahoo: return KeyContent(symbol: "magnifyingglass", isAction: true)
+        case .send: return KeyContent(text: "傳送", isAction: true, isFunctionText: true)
+        case .done: return KeyContent(text: "完成", isAction: true, isFunctionText: true)
+        case .next: return KeyContent(text: "下一項", isAction: true, isFunctionText: true)
+        case .join: return KeyContent(text: "加入", isAction: true, isFunctionText: true)
+        case .route: return KeyContent(text: "路線", isAction: true, isFunctionText: true)
+        case .continue: return KeyContent(text: "繼續", isAction: true, isFunctionText: true)
+        case .emergencyCall: return KeyContent(text: "緊急", isAction: true, isFunctionText: true)
+        default: return KeyContent(symbol: "return")
+        }
+    }
+
+    private func refreshEverything() {
+        guard let session else { return }
+        candidateBar.update(state: session.composerState, hint: tableHint, candidateLimit: settings.candidateCount)
+        keysView.refreshContent()
+        // 頁面切換（或情境變化）需要重新排版
+        if configuredKey != currentConfigKey() {
+            inputView?.setNeedsLayout()
+        }
+    }
+
+    private func currentConfigKey() -> String {
+        guard let session else { return "" }
+        let width = Int(inputView?.bounds.width ?? 0)
+        return "\(session.page)|\(layoutVariant ?? "-")|\(isLandscape)|\(width)"
+    }
+
+    private var isLandscape: Bool {
+        UIDevice.current.userInterfaceIdiom == .phone && UIScreen.main.bounds.width > UIScreen.main.bounds.height
+    }
+
+    private func layoutKeyboard() {
+        guard let root = inputView, let layoutFile, let session else { return }
+        let width = root.bounds.width
+        guard width > 0 else { return }
+
+        let landscape = isLandscape
+        let metrics = layoutFile.metrics.metrics(landscape: landscape)
+        guard let page = layoutFile.page(session.page, variant: layoutVariant) else { return }
+
+        let keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
+        let total = candidateBarHeight + keysHeight
+
+        if heightConstraint == nil {
+            let constraint = root.heightAnchor.constraint(equalToConstant: total)
+            constraint.priority = UILayoutPriority(999)  // 避免與系統約束衝突
+            constraint.isActive = true
+            heightConstraint = constraint
+        } else if heightConstraint?.constant != total {
+            heightConstraint?.constant = total
+        }
+
+        candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
+        keysView.frame = CGRect(x: 0, y: candidateBarHeight, width: width, height: keysHeight)
+        candidatePanel.frame = keysView.frame
+        emojiPanel.frame = keysView.frame
+
+        let key = currentConfigKey()
+        if key != configuredKey {
+            configuredKey = key
+            keysView.configure(page: page, metrics: metrics, landscape: landscape)
+        }
+    }
+
+    // MARK: - 狀態回報（主 App 狀態面板用，FR-A11）
 
     private func writeHeartbeat() {
         do {

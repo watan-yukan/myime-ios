@@ -1,0 +1,115 @@
+import UIKit
+import IMECore
+
+/// 鍵帽內容：文字或 SF Symbol。
+struct KeyContent: Equatable {
+    var text: String?
+    var symbol: String?
+    /// 動作鍵（藍色 Return 等）。
+    var isAction = false
+    /// 功能鍵文字（123、中）字級較小。
+    var isFunctionText = false
+}
+
+/// 單一按鍵外觀：顏色、圓角、邊框、陰影全部來自主題（FR-T01），元件內不寫死任何顏色。
+final class KeyCapView: UIView {
+    private let label = UILabel()
+    private let imageView = UIImageView()
+    private var content = KeyContent()
+    private var palette: ThemePalette?
+    private var themeMetrics = ThemeMetrics.standard
+    private(set) var isPressed = false
+    private var labelsHidden = false
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isUserInteractionEnabled = false
+        layer.shadowOffset = CGSize(width: 0, height: 1)
+        layer.shadowRadius = 0
+
+        label.textAlignment = .center
+        label.adjustsFontSizeToFitWidth = true
+        label.minimumScaleFactor = 0.6
+        addSubview(label)
+
+        imageView.contentMode = .scaleAspectFit
+        addSubview(imageView)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func set(content newContent: KeyContent) {
+        content = newContent
+        label.text = newContent.text
+        imageView.image = newContent.symbol.flatMap {
+            UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
+        }
+        label.isHidden = newContent.text == nil || labelsHidden
+        imageView.isHidden = newContent.symbol == nil || labelsHidden
+        updateColors()
+        setNeedsLayout()
+    }
+
+    func apply(palette: ThemePalette, metrics: ThemeMetrics) {
+        self.palette = palette
+        self.themeMetrics = metrics
+        updateColors()
+        setNeedsLayout()
+    }
+
+    func setPressed(_ pressed: Bool) {
+        guard pressed != isPressed else { return }
+        isPressed = pressed
+        updateColors()
+    }
+
+    /// 觸控板模式：鍵帽文字隱藏（FR-U04）。
+    func setLabelsHidden(_ hidden: Bool) {
+        labelsHidden = hidden
+        label.isHidden = content.text == nil || hidden
+        imageView.isHidden = content.symbol == nil || hidden
+    }
+
+    private func updateColors() {
+        guard let palette else { return }
+        let background: RGBAColor
+        let foreground: RGBAColor
+        if isPressed {
+            background = content.isAction ? palette[.actionKeyBackground] : palette[.keyBackgroundPressed]
+            foreground = content.isAction ? palette[.actionKeyText] : palette[.keyTextPressed]
+        } else {
+            background = content.isAction ? palette[.actionKeyBackground] : palette[.keyBackground]
+            foreground = content.isAction ? palette[.actionKeyText] : palette[.keyText]
+        }
+        backgroundColor = background.uiColor
+        label.textColor = foreground.uiColor
+        imageView.tintColor = foreground.uiColor
+
+        let border = palette[.keyBorder]
+        layer.borderColor = border.uiColor.cgColor
+        layer.borderWidth = border.alpha > 0 ? CGFloat(themeMetrics.keyBorderWidth) : 0
+
+        let shadow = palette[.keyShadow]
+        layer.shadowColor = shadow.uiColor.cgColor
+        layer.shadowOpacity = shadow.alpha > 0 ? 1 : 0
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // 圓角隨鍵高：直向 45 pt 約 7 pt、橫向 32 pt 約 5 pt（量測 5～8.5 pt）
+        let base = min(max(bounds.height * 0.16, 5), 8.5)
+        layer.cornerRadius = base * CGFloat(themeMetrics.cornerRadiusScale)
+
+        let fontSize: CGFloat
+        if content.isFunctionText {
+            fontSize = min(16, bounds.height * 0.36)
+        } else {
+            fontSize = min(26, bounds.height * 0.5)
+        }
+        label.font = UIFont.systemFont(ofSize: fontSize * CGFloat(themeMetrics.fontScale))
+        label.frame = bounds.insetBy(dx: 2, dy: 2)
+        imageView.frame = bounds.insetBy(dx: 6, dy: 6)
+    }
+}

@@ -424,3 +424,30 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(result.settings.numberRow)
     }
 }
+
+final class AlternateCharacterTests: XCTestCase {
+    func testLetterAlternates() {
+        XCTAssertEqual(AlternateCharacters.options(for: "e").prefix(4), ["è", "é", "ê", "ë"])
+        XCTAssertTrue(AlternateCharacters.options(for: "e").contains("ē"))
+        XCTAssertEqual(AlternateCharacters.options(for: "n"), ["ñ", "ń"])
+        XCTAssertEqual(AlternateCharacters.options(for: "q"), [], "沒有替代字元的字母")
+    }
+
+    func testUppercaseFollowsShift() {
+        XCTAssertEqual(AlternateCharacters.options(for: "e", uppercase: true).first, "È")
+        XCTAssertEqual(AlternateCharacters.options(for: "E").first, "è", "輸出是大寫字母時仍以小寫對照，顯示依 uppercase 參數")
+    }
+
+    func testSymbolAlternates() {
+        XCTAssertEqual(AlternateCharacters.options(for: "."), ["…", "·", "•"])
+        XCTAssertEqual(AlternateCharacters.options(for: "-"), ["–", "—", "•"])
+        XCTAssertEqual(AlternateCharacters.options(for: "$").first, "€")
+        XCTAssertEqual(AlternateCharacters.options(for: "?"), ["¿"])
+    }
+
+    func testNonSingleCharactersHaveNone() {
+        XCTAssertEqual(AlternateCharacters.options(for: ""), [])
+        XCTAssertEqual(AlternateCharacters.options(for: ".com"), [])
+        XCTAssertEqual(AlternateCharacters.options(for: "中"), [])
+    }
+}

@@ -41,6 +41,14 @@ enum SharedStorage {
         static let ping = "spike_ping.json"
         static let marker = "persist_marker.json"
         static let importedTable = "imported_table.cin"
+        static let settings = "settings.json"
+        /// 碼表索引（鍵盤只讀，docs/06_資料格式.md 第 2 章）。
+        static let tableIndex = "table.idx"
+        /// 匯入碼表的名稱、筆數、匯入時間。
+        static let tableMeta = "table_meta.json"
+        /// 匯入的原始 .cin 副本：索引格式升版時用來重建；不進備份、不上傳（R-LIU-1）。
+        static let tableSource = "table_source.cin"
+        static let phrases = "phrases.json"
     }
 
     static var containerURL: URL? {

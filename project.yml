@@ -16,6 +16,10 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
     DEVELOPMENT_TEAM: ""
 
+packages:
+  IMECore:
+    path: Packages/IMECore   # 純 Swift 輸入引擎，App 與鍵盤擴充共用
+
 targets:
   MyIME:
     type: application
@@ -53,6 +57,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.watanyukan.myime
     dependencies:
       - target: MyIMEKeyboard   # app-extension 會自動嵌入 PlugIns/
+      - package: IMECore
 
   MyIMEKeyboard:
     type: app-extension
@@ -79,6 +84,8 @@ targets:
             PrefersRightToLeft: false
             PrimaryLanguage: zh-Hant
             RequestsOpenAccess: true   # 完整取用：共用容器、剪貼簿需要
+    dependencies:
+      - package: IMECore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.watanyukan.myime.keyboard
