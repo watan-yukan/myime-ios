@@ -17,6 +17,7 @@ final class CandidateBarView: UIView {
     var onSelectEnglish: (() -> Void)?
     var onExpand: (() -> Void)?
     var onTool: ((Tool) -> Void)?
+    var onSelectSuggestion: ((Int) -> Void)?
 
     /// 目前這一列顯示的候選數（展開候選表從這裡之後接續）。
     private(set) var visibleCandidateCount = 0
@@ -33,6 +34,8 @@ final class CandidateBarView: UIView {
     private let expandButton = UIButton(type: .system)
     private let separator = UIView()
     private var candidateButtons: [UIButton] = []
+    private var suggestionButtons: [UIButton] = []
+    private var suggestions: [PhraseSuggestion] = []
     private var toolButtons: [(tool: Tool, button: UIButton)] = []
 
     private let candidateFont = UIFont.systemFont(ofSize: 20)
@@ -93,10 +96,11 @@ final class CandidateBarView: UIView {
     /// - Parameters:
     ///   - hint: 沒在組字時顯示的提示（例如尚未匯入碼表）。
     ///   - candidateLimit: 設定的候選字數上限；0 表示依寬度自動。
-    func update(state: ComposerState, hint: String?, candidateLimit: Int) {
+    func update(state: ComposerState, hint: String?, candidateLimit: Int, suggestions: [PhraseSuggestion] = []) {
         self.state = state
         self.hint = hint
         self.candidateLimit = candidateLimit
+        self.suggestions = suggestions
         render()
     }
 
@@ -125,12 +129,27 @@ final class CandidateBarView: UIView {
         }
         messageLabel.isHidden = messageLabel.text == nil
 
-        for (tool, button) in toolButtons {
+        for (_, button) in toolButtons {
             button.isHidden = composing
             button.tintColor = text.withAlphaComponent(0.75)
-            _ = tool
         }
         expandButton.tintColor = text
+
+        for button in suggestionButtons { button.removeFromSuperview() }
+        suggestionButtons.removeAll()
+        if !composing {
+            for (index, suggestion) in suggestions.enumerated() {
+                let button = UIButton(type: .system)
+                button.titleLabel?.font = candidateFont
+                button.setTitle(suggestion.text, for: .normal)
+                button.setTitleColor(text, for: .normal)
+                button.accessibilityLabel = "建議：\(suggestion.phrase)"
+                button.addAction(UIAction { [weak self] _ in self?.onSelectSuggestion?(index) }, for: .touchUpInside)
+                button.isHidden = true
+                addSubview(button)
+                suggestionButtons.append(button)
+            }
+        }
 
         for button in candidateButtons { button.removeFromSuperview() }
         candidateButtons.removeAll()
@@ -216,12 +235,32 @@ final class CandidateBarView: UIView {
 
         let buttonWidth: CGFloat = 44
         var x = width - sideInset
-        for (_, button) in toolButtons.reversed() {
+        // 有常用詞建議時，右邊只留「收起鍵盤」，空間讓給建議
+        let hasSuggestions = !suggestionButtons.isEmpty
+        for (tool, button) in toolButtons.reversed() {
+            if hasSuggestions, tool != .dismiss {
+                button.isHidden = true
+                continue
+            }
             x -= buttonWidth
             button.frame = CGRect(x: x, y: 0, width: buttonWidth, height: height)
             button.isHidden = false
         }
+
+        var left = sideInset
+        for button in suggestionButtons {
+            let title = button.title(for: .normal) ?? ""
+            let buttonWidth = max(44, textWidth(title, font: candidateFont) + 24)
+            guard left + buttonWidth <= x else {
+                button.isHidden = true
+                continue
+            }
+            button.frame = CGRect(x: left, y: 0, width: buttonWidth, height: height)
+            button.isHidden = false
+            left += buttonWidth
+        }
         messageLabel.frame = CGRect(x: sideInset + 4, y: 0, width: max(0, x - sideInset - 8), height: height)
+        messageLabel.isHidden = messageLabel.isHidden || hasSuggestions
     }
 }
 

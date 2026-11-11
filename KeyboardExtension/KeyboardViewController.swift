@@ -56,6 +56,9 @@ final class KeyboardViewController: UIInputViewController {
 
     private var layoutFile: KeyboardLayoutFile?
     private var session: KeyboardSession?
+    private var phraseStore = PhraseStore()
+    private var savedPhraseRevision = 0
+    private var phrasesWritable = true
     private var settings = KeyboardSettings()
     private var theme = BuiltinThemes.native()
     private var isDark = false
@@ -104,6 +107,7 @@ final class KeyboardViewController: UIInputViewController {
         writeHeartbeat()
         loadSettings()
         loadSession()
+        loadPhrases()
         applyTheme()
         hidePanels()
         session?.autocapitalizationType = autocapitalizationType()
@@ -116,6 +120,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillDisappear(animated)
         keysView.cancelAllTouches()
         session?.contextChanged()
+        savePhrasesIfNeeded(force: true)
     }
 
     override func viewDidLayoutSubviews() {
@@ -166,10 +171,33 @@ final class KeyboardViewController: UIInputViewController {
         }
         let newSession = KeyboardSession(source: source, settings: settings)
         newSession.output = output
+        newSession.phraseStore = phraseStore
         newSession.onChange = { [weak self] in self?.refreshEverything() }
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
+    }
+
+    /// 常用詞記錄存在 App Group；每次鍵盤出現時重新讀取，才看得到主 App 管理頁的修改。
+    private func loadPhrases() {
+        guard let url = SharedStorage.url(SharedStorage.FileName.phrases) else { return }
+        let loaded = PhraseFileStore(url: url).load()
+        phraseStore = loaded.store
+        phrasesWritable = loaded.writable
+        savedPhraseRevision = phraseStore.revision
+        session?.phraseStore = phraseStore
+    }
+
+    private func savePhrasesIfNeeded(force: Bool = false) {
+        guard phrasesWritable, phraseStore.revision != savedPhraseRevision,
+              force || phraseStore.revision - savedPhraseRevision >= 20,
+              let url = SharedStorage.url(SharedStorage.FileName.phrases) else { return }
+        do {
+            try PhraseFileStore(url: url).save(phraseStore)
+            savedPhraseRevision = phraseStore.revision
+        } catch {
+            logger.error("save phrases failed: \(error.localizedDescription, privacy: .public)")
+        }
     }
 
     private func wireCallbacks() {
@@ -187,6 +215,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.onSelectEnglish = { [weak self] in self?.session?.selectEnglishOption() }
         candidateBar.onExpand = { [weak self] in self?.showCandidatePanel() }
         candidateBar.onTool = { [weak self] tool in self?.handleTool(tool) }
+        candidateBar.onSelectSuggestion = { [weak self] index in self?.session?.acceptSuggestion(index) }
 
         candidatePanel.onSelect = { [weak self] index in
             self?.session?.selectCandidate(index)
@@ -400,8 +429,11 @@ final class KeyboardViewController: UIInputViewController {
 
     private func refreshEverything() {
         guard let session else { return }
-        candidateBar.update(state: session.composerState, hint: tableHint, candidateLimit: settings.candidateCount)
+        candidateBar.update(
+            state: session.composerState, hint: tableHint, candidateLimit: settings.candidateCount,
+            suggestions: session.suggestions)
         keysView.refreshContent()
+        savePhrasesIfNeeded()
         // 頁面切換（或情境變化）需要重新排版
         if configuredKey != currentConfigKey() {
             inputView?.setNeedsLayout()

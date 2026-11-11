@@ -45,6 +45,8 @@ public final class PhraseStore {
     private static let manualBonus = 1_000_000.0
 
     public private(set) var records: [String: PhraseRecord] = [:]
+    /** 每次內容有變動就加 1，呼叫端用來判斷是否需要存檔。 */
+    public private(set) var revision = 0
     /// 關閉時不記錄、也不提供建議（FR-S05）。
     public var isEnabled = true
     private var recent = ""
@@ -84,6 +86,7 @@ public final class PhraseStore {
     }
 
     private func bump(_ phrase: String, now: Date) {
+        revision += 1
         if var existing = records[phrase] {
             existing.count += 1
             existing.lastUsed = now
@@ -139,6 +142,7 @@ public final class PhraseStore {
     @discardableResult
     public func add(manual text: String) -> Bool {
         guard text.count >= 2, text.allSatisfy(Self.isCJK) else { return false }
+        revision += 1
         var record = records[text] ?? PhraseRecord(text: text)
         record.source = .manual
         records[text] = record
@@ -146,15 +150,18 @@ public final class PhraseStore {
     }
 
     public func remove(_ text: String) {
+        revision += 1
         records[text] = nil
     }
 
     /// 清除所有學來的詞；手動新增的保留。
     public func removeAllLearned() {
+        revision += 1
         records = records.filter { $0.value.source == .manual }
     }
 
     public func removeAll() {
+        revision += 1
         records.removeAll()
     }
 
