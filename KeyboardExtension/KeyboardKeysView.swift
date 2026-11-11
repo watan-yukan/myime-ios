@@ -152,6 +152,12 @@ final class KeyboardKeysView: UIView {
         tracker = TouchTracker(hitTester: pageFrames.hitTester())
     }
 
+    /// 截圖測試用：模擬手指按住某個鍵（顯示按下效果與放大預覽），不送出。
+    func simulatePress(ofKeyWithOutput output: String) {
+        guard let frame = pageFrames.frames.first(where: { $0.key.output == output }) else { return }
+        beginPress(frame, touch: 9_999)
+    }
+
     /// 鍵盤消失時取消所有進行中的觸控（不送出）。
     func cancelAllTouches() {
         _ = tracker.reset()

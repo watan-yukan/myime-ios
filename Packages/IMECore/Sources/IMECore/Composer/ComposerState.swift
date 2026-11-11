@@ -21,6 +21,12 @@ public struct ComposerState: Equatable, Sendable {
     public var candidates: [String]
     public var status: Status
 
+    public init(code: String, candidates: [String], status: Status) {
+        self.code = code
+        self.candidates = candidates
+        self.status = status
+    }
+
     public var isComposing: Bool { !code.isEmpty }
 
     /// 候選列最後固定的英文選項（FR-E01）：目前已輸入的原始字母；沒在組字時為 nil。

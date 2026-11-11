@@ -59,6 +59,23 @@ targets:
       - target: MyIMEKeyboard   # app-extension 會自動嵌入 PlugIns/
       - package: IMECore
 
+  # 截圖測試（Issue #32）：在模擬器裡把鍵盤元件畫成 PNG，不需要 host App
+  MyIMEKeyboardSnapshots:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: KeyboardExtension
+        excludes:
+          - KeyboardViewController.swift
+      - Shared
+      - Tests/SnapshotTests
+    dependencies:
+      - package: IMECore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.watanyukan.myime.snapshots
+        GENERATE_INFOPLIST_FILE: YES
+
   MyIMEKeyboard:
     type: app-extension
     platform: iOS

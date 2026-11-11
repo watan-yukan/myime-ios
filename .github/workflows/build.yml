@@ -53,6 +53,40 @@ jobs:
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
+  # 鍵盤外觀截圖（Issue #32）：模擬器跑截圖測試，圖片上傳為 Artifact 供檢視
+  snapshots:
+    needs: guard
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        run: xcodegen generate
+
+      - name: Run snapshot tests
+        run: |
+          set -o pipefail
+          DEVICE=$(xcrun simctl list devices available -j | jq -r '[.devices | to_entries[] | select(.key | test("iOS")) | .value[] | select(.name | test("iPhone"))][0].udid')
+          echo "Simulator: $DEVICE"
+          mkdir -p "$PWD/snapshots"
+          TEST_RUNNER_SNAPSHOT_DIR="$PWD/snapshots" xcodebuild test \
+            -project MyIME.xcodeproj \
+            -scheme MyIMEKeyboardSnapshots \
+            -destination "id=$DEVICE" \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tail -60
+          ls -la snapshots
+
+      - name: Upload snapshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyboard-snapshots-${{ github.run_number }}
+          path: snapshots
+          retention-days: 14
+
   ios:
     needs: guard
     runs-on: macos-latest

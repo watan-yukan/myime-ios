@@ -24,7 +24,11 @@ enum ThemeCatalog {
     }
 
     static var all: [Theme] {
-        builtinIDs.map { theme(id: $0) }
+        all(bundle: .main)
+    }
+
+    static func all(bundle: Bundle) -> [Theme] {
+        builtinIDs.map { theme(id: $0, bundle: bundle) }
     }
 
     private static func load(_ id: String, bundle: Bundle) -> Theme? {
