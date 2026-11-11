@@ -66,6 +66,15 @@ final class KeyboardViewController: UIInputViewController {
     private var tableStamp: Date?
     private var tableHint: String? = "請先在 MyIME App 匯入碼表"
 
+    /// 開發期間：在鍵盤最上緣顯示高度數字（只有高度，沒有任何輸入內容）。正式版改為 false 或刪除。
+    private static let showHeightDebug = true
+    private let heightDebugLabel: UILabel = {
+        let label = UILabel()
+        label.font = .systemFont(ofSize: 9)
+        label.textColor = .systemYellow
+        label.isUserInteractionEnabled = false
+        return label
+    }()
     private var heightConstraint: NSLayoutConstraint?
     private var configuredKey = ""
     private var pageForcedByKeyboardType = false
@@ -503,6 +512,7 @@ final class KeyboardViewController: UIInputViewController {
         let page = showsNumberRow ? Self.insertingNumberRow(into: basePage) : basePage
 
         var keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
+        let keysHeightRequested = keysHeight
         // 有些 App（例如備忘錄的格式工具列）會把鍵盤高度壓得比期望小；
         // 系統給的高度不夠時，等比縮小按鍵高度與間距，避免最下面一列被切掉。
         let available = root.bounds.height - candidateBarHeight
@@ -523,6 +533,17 @@ final class KeyboardViewController: UIInputViewController {
             heightConstraint = constraint
         } else if heightConstraint?.constant != total {
             heightConstraint?.constant = total
+        }
+
+        if Self.showHeightDebug {
+            let origin = root.superview.map { root.convert(CGPoint.zero, to: $0).y } ?? -1
+            heightDebugLabel.text = String(
+                format: "要求 %.0f / 實際 %.0f / 縮放後 %.0f / 頂端偏移 %.0f / 螢幕 %.0f",
+                candidateBarHeight + keysHeightRequested, root.bounds.height, total, origin,
+                UIScreen.main.bounds.height)
+            heightDebugLabel.frame = CGRect(x: 4, y: 0, width: width - 8, height: 12)
+            if heightDebugLabel.superview == nil { root.addSubview(heightDebugLabel) }
+            root.bringSubviewToFront(heightDebugLabel)
         }
 
         candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
