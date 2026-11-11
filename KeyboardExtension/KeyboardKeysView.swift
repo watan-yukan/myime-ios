@@ -381,7 +381,7 @@ final class KeyboardKeysView: UIView {
         let x = min(max(rect.midX - width / 2, 0), max(bounds.width - width, 0))
         // 預覽高度所有列一致：以第一列能往上伸展的極限為準（不能超出鍵盤範圍）
         let bottom = rect.minY + 2
-        let height: CGFloat = 52
+        let height: CGFloat = 62
         let top = max(bottom - height, -previewHeadroom + 2)
         guard bottom - top >= 36 else {
             previewView.isHidden = true

@@ -78,7 +78,7 @@ final class KeyboardViewController: UIInputViewController {
     private var heightConstraint: NSLayoutConstraint?
     private var configuredKey = ""
     private var pageForcedByKeyboardType = false
-    private let candidateBarHeight: CGFloat = 44
+    private let candidateBarHeight: CGFloat = 56  // 比原生高 12pt，讓第一排的放大預覽有完整空間
 
     /// 鍵盤的主 view（`inputView`；取不到時退回 `view`）。
     private var rootView: UIView { inputView ?? view }
