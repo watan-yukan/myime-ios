@@ -19,6 +19,13 @@ public final class KeyboardSession {
     /// 狀態改變（組字、Shift、頁面、模式）時通知畫面更新。
     public var onChange: (() -> Void)?
 
+    /// 常用詞記錄；設定後會依 `settings.phraseLearning` 開關（FR-S05）。
+    public var phraseStore: PhraseStore? {
+        didSet { phraseStore?.isEnabled = settings.phraseLearning }
+    }
+    /// 沒在組字時，候選列顯示的常用詞建議（FR-S01）。
+    public private(set) var suggestions: [PhraseSuggestion] = []
+
     private var markedActive = false
 
     public init(source: any CandidateSource, settings: KeyboardSettings = KeyboardSettings()) {
@@ -78,6 +85,17 @@ public final class KeyboardSession {
         perform(.swipeUpSpace)
     }
 
+    /// 點選常用詞建議：輸入後續文字（FR-S01）。
+    public func acceptSuggestion(_ index: Int) {
+        guard suggestions.indices.contains(index), let output else { return }
+        let text = suggestions[index].text
+        output.insertText(text)
+        phraseStore?.recordCommit(text)
+        refreshSuggestions()
+        refreshAutoCapitalization()
+        changed()
+    }
+
     public func selectCandidate(_ index: Int) {
         perform(.selectCandidate(index))
     }
@@ -101,6 +119,7 @@ public final class KeyboardSession {
 
     /// 切換輸入欄位、游標移動、鍵盤出現或收起：清除組字（FR-K14）。
     public func contextChanged() {
+        phraseStore?.resetContext()
         perform(.contextChanged)
         shift.reset()
         refreshAutoCapitalization()
@@ -132,7 +151,17 @@ public final class KeyboardSession {
             && AutoCapitalization.shouldCapitalize(textBeforeCursor: before, type: autocapitalizationType)
         execute(composer.handle(event))
         if event == .space || event == .backspace || event == .returnKey { refreshAutoCapitalization() }
+        refreshSuggestions()
         changed()
+    }
+
+    /// 只在中文模式、沒有組字時提供建議；組字中候選列要留給候選字。
+    private func refreshSuggestions() {
+        guard composer.mode == .chinese, !composer.state.isComposing, let store = phraseStore, store.isEnabled else {
+            suggestions = []
+            return
+        }
+        suggestions = store.suggestions(afterText: output?.textBeforeCursor, limit: 8)
     }
 
     private func execute(_ actions: [OutputAction]) {
@@ -140,6 +169,7 @@ public final class KeyboardSession {
         for action in actions {
             switch action {
             case .insert(let text):
+                phraseStore?.recordCommit(text)  // 非中文字會中斷目前的詞
                 if markedActive {
                     output.setMarkedText(text)  // 取代組字文字再確定，等同 insertText 取代 marked text
                     output.unmarkText()
@@ -176,6 +206,7 @@ public final class KeyboardSession {
         composer.spaceSwipeUpEnglish = settings.spaceSwipeUpEnglish
         composer.appendSpaceAfterEnglish = settings.spaceSwipeUpAppendSpace
         composer.numberRowSelection = settings.numberRow
+        phraseStore?.isEnabled = settings.phraseLearning
     }
 
     private func changed() {

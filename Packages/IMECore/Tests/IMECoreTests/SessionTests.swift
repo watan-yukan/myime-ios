@@ -451,3 +451,94 @@ final class AlternateCharacterTests: XCTestCase {
         XCTAssertEqual(AlternateCharacters.options(for: "中"), [])
     }
 }
+
+/// 常用詞建議接進鍵盤大腦（FR-S01~S05）。
+final class SessionSuggestionTests: XCTestCase {
+
+    private let source = DictionaryCandidateSource(["a": ["信"], "b": ["義"]], maxCodeLength: 5)
+
+    private func make(learning: Bool = true) -> (KeyboardSession, MockOutput, PhraseStore) {
+        var settings = KeyboardSettings()
+        settings.phraseLearning = learning
+        let session = KeyboardSession(source: source, settings: settings)
+        let output = MockOutput()
+        let store = PhraseStore()
+        session.output = output
+        session.phraseStore = store
+        return (session, output, store)
+    }
+
+    private func typeWord(_ session: KeyboardSession) {
+        for code in ["a", "b"] {
+            session.tap(LayoutKey(char: code))
+            session.tap(LayoutKey(type: .space))
+        }
+    }
+
+    func testLearnedPhraseIsSuggestedAfterTheFirstCharacter() {
+        let (session, output, _) = make()
+        for _ in 0..<2 {
+            output.preload("")
+            session.contextChanged()
+            typeWord(session)
+        }
+        output.preload("")
+        session.contextChanged()
+        session.tap(LayoutKey(char: "a"))
+        session.tap(LayoutKey(type: .space))
+        XCTAssertEqual(output.visibleText, "信")
+        XCTAssertEqual(session.suggestions, [PhraseSuggestion(text: "義", phrase: "信義")])
+
+        session.acceptSuggestion(0)
+        XCTAssertEqual(output.visibleText, "信義")
+        XCTAssertEqual(session.suggestions, [], "整個詞已輸入完，沒有更多建議")
+    }
+
+    func testNoSuggestionsWhileComposingOrInEnglishMode() {
+        let (session, output, store) = make()
+        store.add(manual: "信義")
+        output.preload("信")
+        session.contextChanged()
+        XCTAssertEqual(session.suggestions.count, 1)
+
+        session.tap(LayoutKey(char: "a"))
+        XCTAssertEqual(session.suggestions, [], "組字中候選列留給候選字")
+
+        session.contextChanged()
+        session.tap(LayoutKey(type: .langToggle))
+        XCTAssertEqual(session.suggestions, [], "英文模式不提供中文詞建議")
+    }
+
+    func testTurningLearningOffStopsRecordingAndSuggesting() {
+        let (session, output, store) = make(learning: false)
+        for _ in 0..<3 {
+            output.preload("")
+            session.contextChanged()
+            typeWord(session)
+        }
+        XCTAssertTrue(store.records.isEmpty)
+
+        store.add(manual: "信義")
+        output.preload("信")
+        session.contextChanged()
+        XCTAssertEqual(session.suggestions, [], "FR-S05：整個關閉")
+
+        session.settings.phraseLearning = true
+        session.contextChanged()
+        XCTAssertEqual(session.suggestions.count, 1)
+    }
+
+    func testPunctuationBreaksLearning() {
+        let (session, output, store) = make()
+        for _ in 0..<3 {
+            output.preload("")
+            session.contextChanged()
+            session.tap(LayoutKey(char: "a"))
+            session.tap(LayoutKey(type: .space))
+            session.tap(LayoutKey(char: "!"))
+            session.tap(LayoutKey(char: "b"))
+            session.tap(LayoutKey(type: .space))
+        }
+        XCTAssertNil(store.records["信義"])
+    }
+}
