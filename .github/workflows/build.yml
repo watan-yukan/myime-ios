@@ -15,7 +15,7 @@ jobs:
   guard:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Block code tables
         run: |
           bad=$(git ls-files | grep -iE '\.cin$' | grep -v '^Packages/IMECore/Tests/IMECoreTests/Fixtures/sample\.cin$' || true)
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     container: swift:6.0
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Swift version
         run: swift --version
       - name: Test IMECore
@@ -58,7 +58,7 @@ jobs:
     needs: guard
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Install XcodeGen
         run: brew install xcodegen
@@ -81,7 +81,7 @@ jobs:
 
       - name: Upload snapshots
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: keyboard-snapshots-${{ github.run_number }}
           path: snapshots
@@ -91,7 +91,7 @@ jobs:
     needs: guard
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Show Xcode version
         run: xcodebuild -version
@@ -126,7 +126,7 @@ jobs:
         run: bash Tools/package_ipa.sh
 
       - name: Upload IPA
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: MyIME-ipa-${{ github.run_number }}
           path: dist/MyIME.ipa
@@ -139,9 +139,9 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: MyIME-ipa-${{ github.run_number }}
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: MyIME.ipa

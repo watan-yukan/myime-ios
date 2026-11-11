@@ -32,9 +32,12 @@ final class KeyCapView: UIView {
         label.minimumScaleFactor = 0.6
         addSubview(label)
 
-        imageView.contentMode = .scaleAspectFit
+        imageView.contentMode = .center  // 圖示保持固定大小置中，不被拉伸填滿按鍵
         addSubview(imageView)
     }
+
+    private var symbolName: String?
+    private var symbolSize: CGFloat = 0
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -43,9 +46,8 @@ final class KeyCapView: UIView {
     func set(content newContent: KeyContent) {
         content = newContent
         label.text = newContent.text
-        imageView.image = newContent.symbol.flatMap {
-            UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(pointSize: 18, weight: .regular))
-        }
+        symbolName = newContent.symbol
+        symbolSize = 0  // 下次排版時依按鍵大小重新產生圖示
         label.isHidden = newContent.text == nil || labelsHidden
         imageView.isHidden = newContent.symbol == nil || labelsHidden
         updateColors()
@@ -110,6 +112,15 @@ final class KeyCapView: UIView {
         }
         label.font = UIFont.systemFont(ofSize: fontSize * CGFloat(themeMetrics.fontScale))
         label.frame = bounds.insetBy(dx: 2, dy: 2)
-        imageView.frame = bounds.insetBy(dx: 6, dy: 6)
+        imageView.frame = bounds
+
+        // 圖示大小隨鍵高：iPhone 直向約 20 pt、橫向 16 pt、iPad 最大 24 pt
+        let size = min(max(bounds.height * 0.44, 16), 24) * CGFloat(themeMetrics.fontScale)
+        if size != symbolSize {
+            symbolSize = size
+            imageView.image = symbolName.flatMap {
+                UIImage(systemName: $0, withConfiguration: UIImage.SymbolConfiguration(pointSize: size, weight: .regular))
+            }
+        }
     }
 }
