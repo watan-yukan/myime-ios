@@ -114,7 +114,9 @@ final class KeyboardKeysView: UIView {
         guard let page, bounds.width > 0 else { return }
         let frames = LayoutEngine.frames(for: page, metrics: metrics, containerWidth: bounds.width, landscape: isLandscape)
 
-        if needsRebuild || frames.frames.map(\.id) != pageFrames.frames.map(\.id) {
+        let newIDs = frames.frames.map { $0.id }
+        let oldIDs = pageFrames.frames.map { $0.id }
+        if needsRebuild || newIDs != oldIDs {
             pageFrames = frames
             rebuildCaps()
             resetTouches()

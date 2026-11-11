@@ -34,6 +34,12 @@ public struct PageFrames: Equatable {
     /// 1 個「字母鍵寬」換算成幾 pt。
     public let unit: CGFloat
 
+    public init(frames: [KeyFrame], size: CGSize, unit: CGFloat) {
+        self.frames = frames
+        self.size = size
+        self.unit = unit
+    }
+
     /// 按鍵區範圍，供 `KeyHitTester` 判斷「鍵盤內」。
     public var bounds: CGRect { CGRect(origin: .zero, size: size) }
 
