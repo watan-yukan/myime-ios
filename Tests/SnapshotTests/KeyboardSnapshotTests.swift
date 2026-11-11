@@ -45,6 +45,7 @@ final class KeyboardSnapshotTests: XCTestCase {
         var uppercase = false
         var mode = InputMode.chinese
         var ipad = false
+        var numberRow = false
     }
 
     private func content(for key: LayoutKey, scene: Scene) -> KeyContent {
@@ -71,7 +72,12 @@ final class KeyboardSnapshotTests: XCTestCase {
         let palette = theme.palette(isDark: scene.dark)
         let file = scene.ipad ? ipadLayout : layout
         let metrics = file.metrics.metrics(landscape: scene.landscape)
-        let page = file.page(scene.page)!
+        var page = file.page(scene.page)!
+        if scene.numberRow {
+            let digits = LayoutRow(keys: "1234567890".map { LayoutKey(char: String($0)) })
+            page.rows.insert(digits, at: 0)
+            page.landscapeRows?.insert(digits, at: 0)
+        }
         let keysHeight = LayoutEngine.frames(
             for: page, metrics: metrics, containerWidth: scene.width, landscape: scene.landscape).size.height
         let barHeight: CGFloat = 44
@@ -217,6 +223,15 @@ final class KeyboardSnapshotTests: XCTestCase {
             landscape.append(("iPad 橫向數字頁（\(mode)）", makeKeyboard(theme: theme, scene: Scene(page: "numbers", landscape: true, width: 1194, dark: dark, ipad: true))))
         }
         try save(sheet(title: "iPad 橫向", items: landscape, columns: 1), name: "ipad-landscape-native")
+    }
+
+    func testNumberRow() throws {
+        let theme = ThemeCatalog.theme(id: "native", bundle: bundle)
+        var items: [(label: String, view: UIView)] = []
+        items.append(("iPhone 數字列開啟（直向）", makeKeyboard(theme: theme, scene: Scene(composing: "ab", candidates: ["米", "粎", "籾"], numberRow: true))))
+        items.append(("iPhone 數字列開啟（橫向）", makeKeyboard(theme: theme, scene: Scene(landscape: true, width: 932, numberRow: true))))
+        items.append(("iPad 數字列開啟（直向）", makeKeyboard(theme: theme, scene: Scene(width: 834, ipad: true, numberRow: true))))
+        try save(sheet(title: "數字列（FR-U22）", items: items, columns: 1), name: "number-row-native")
     }
 
     func testNarrowWidths() throws {

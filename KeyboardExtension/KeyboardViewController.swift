@@ -471,7 +471,20 @@ final class KeyboardViewController: UIInputViewController {
     private func currentConfigKey() -> String {
         guard let session else { return "" }
         let width = Int(rootView.bounds.width)
-        return "\(session.page)|\(layoutVariant ?? "-")|\(isLandscape)|\(width)"
+        return "\(session.page)|\(layoutVariant ?? "-")|\(isLandscape)|\(width)|\(showsNumberRow)"
+    }
+
+    /// 可選的數字列（FR-U22）：設定開啟時，字母頁最上方多一列數字；組字中按數字直接選字。
+    private var showsNumberRow: Bool {
+        settings.numberRow && session?.page == "alpha"
+    }
+
+    private static func insertingNumberRow(into page: LayoutPage) -> LayoutPage {
+        let digits = LayoutRow(keys: "1234567890".map { LayoutKey(char: String($0)) })
+        var result = page
+        result.rows.insert(digits, at: 0)
+        result.landscapeRows?.insert(digits, at: 0)
+        return result
     }
 
     private var isLandscape: Bool {
@@ -486,7 +499,8 @@ final class KeyboardViewController: UIInputViewController {
 
         let landscape = isLandscape
         let metrics = layoutFile.metrics.metrics(landscape: landscape)
-        guard let page = layoutFile.page(session.page, variant: layoutVariant) else { return }
+        guard let basePage = layoutFile.page(session.page, variant: layoutVariant) else { return }
+        let page = showsNumberRow ? Self.insertingNumberRow(into: basePage) : basePage
 
         let keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
         let total = candidateBarHeight + keysHeight
