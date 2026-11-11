@@ -379,14 +379,15 @@ final class KeyboardKeysView: UIView {
         let rect = frame.rect
         let width = max(rect.width * 1.65, 40)
         let x = min(max(rect.midX - width / 2, 0), max(bounds.width - width, 0))
-        let bottom = rect.minY - 4
-        let top = max(bottom - 65, -previewHeadroom + 2)  // 第一列的預覽不超出鍵盤範圍
-        let height = bottom - top
-        guard height >= 36 else {
+        // 預覽高度所有列一致：以第一列能往上伸展的極限為準（不能超出鍵盤範圍）
+        let bottom = rect.minY + 2
+        let height: CGFloat = 52
+        let top = max(bottom - height, -previewHeadroom + 2)
+        guard bottom - top >= 36 else {
             previewView.isHidden = true
             return
         }
-        previewView.frame = CGRect(x: x, y: top, width: width, height: height)
+        previewView.frame = CGRect(x: x, y: top, width: width, height: bottom - top)
         previewLabel.frame = previewView.bounds
         previewLabel.text = text
         previewView.isHidden = false

@@ -498,11 +498,22 @@ final class KeyboardViewController: UIInputViewController {
         guard width > 0 else { return }
 
         let landscape = isLandscape
-        let metrics = layoutFile.metrics.metrics(landscape: landscape)
+        var metrics = layoutFile.metrics.metrics(landscape: landscape)
         guard let basePage = layoutFile.page(session.page, variant: layoutVariant) else { return }
         let page = showsNumberRow ? Self.insertingNumberRow(into: basePage) : basePage
 
-        let keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
+        var keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
+        // 有些 App（例如備忘錄的格式工具列）會把鍵盤高度壓得比期望小；
+        // 系統給的高度不夠時，等比縮小按鍵高度與間距，避免最下面一列被切掉。
+        let available = root.bounds.height - candidateBarHeight
+        if available > 120, keysHeight > available + 0.5 {
+            let scale = available / keysHeight
+            metrics.keyHeight *= scale
+            metrics.rowGap *= scale
+            metrics.topInset *= scale
+            metrics.bottomInset *= scale
+            keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
+        }
         let total = candidateBarHeight + keysHeight
 
         if heightConstraint == nil {
@@ -519,7 +530,7 @@ final class KeyboardViewController: UIInputViewController {
         candidatePanel.frame = keysView.frame
         emojiPanel.frame = keysView.frame
 
-        let key = currentConfigKey()
+        let key = currentConfigKey() + String(format: "|%.1f", metrics.keyHeight)
         if key != configuredKey {
             configuredKey = key
             keysView.configure(page: page, metrics: metrics, landscape: landscape)
