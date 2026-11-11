@@ -53,6 +53,7 @@ final class KeyboardViewController: UIInputViewController {
     private let emojiPanel = EmojiPanelView()
     private let output = ProxyTextOutput()
     private let haptic = UIImpactFeedbackGenerator(style: .light)
+    private let globeButton = UIButton(type: .system)
 
     private var layoutFile: KeyboardLayoutFile?
     private var session: KeyboardSession?
@@ -82,11 +83,14 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidLoad()
         logger.info("keyboard viewDidLoad")
         output.proxy = textDocumentProxy
-        layoutFile = LayoutCatalog.iphone()
+        let isPad = UIDevice.current.userInterfaceIdiom == .pad
+        layoutFile = LayoutCatalog.layout(isPad: isPad)
+        keysView.showsPreview = !isPad  // iPad 沒有按下放大預覽（比照原生）
 
         guard let root = inputView else { return }
         root.addSubview(candidateBar)
         root.addSubview(keysView)
+        setupGlobeButton()
         root.addSubview(candidatePanel)
         root.addSubview(emojiPanel)
         candidatePanel.isHidden = true
@@ -176,6 +180,26 @@ final class KeyboardViewController: UIInputViewController {
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
+    }
+
+    /// 地球鍵：疊一個系統按鈕在版面中的地球鍵上，取得與原生相同的點擊切換與長按鍵盤清單（FR-U12、U16）。
+    private func setupGlobeButton() {
+        globeButton.backgroundColor = .clear
+        globeButton.accessibilityLabel = "下一個鍵盤"
+        globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+        globeButton.isHidden = true
+        keysView.addSubview(globeButton)
+        keysView.onLayout = { [weak self] in self?.positionGlobeButton() }
+    }
+
+    private func positionGlobeButton() {
+        guard let frame = keysView.globeFrame else {
+            globeButton.isHidden = true
+            return
+        }
+        globeButton.frame = frame
+        globeButton.isHidden = false
+        keysView.bringSubviewToFront(globeButton)
     }
 
     /// 常用詞記錄存在 App Group；每次鍵盤出現時重新讀取，才看得到主 App 管理頁的修改。
@@ -447,7 +471,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private var isLandscape: Bool {
-        UIDevice.current.userInterfaceIdiom == .phone && UIScreen.main.bounds.width > UIScreen.main.bounds.height
+        UIScreen.main.bounds.width > UIScreen.main.bounds.height
     }
 
     private func layoutKeyboard() {

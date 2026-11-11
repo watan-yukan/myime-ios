@@ -41,7 +41,20 @@ enum ThemeCatalog {
 /// 鍵盤版面檔的載入。
 enum LayoutCatalog {
     static func iphone(bundle: Bundle = .main) -> KeyboardLayoutFile? {
-        guard let url = bundle.url(forResource: "iphone", withExtension: "json") else { return nil }
+        load("iphone", bundle: bundle)
+    }
+
+    static func ipad(bundle: Bundle = .main) -> KeyboardLayoutFile? {
+        load("ipad", bundle: bundle)
+    }
+
+    /// 依裝置取得版面；iPad 版面檔缺少時退回 iPhone 版面，鍵盤仍可使用。
+    static func layout(isPad: Bool, bundle: Bundle = .main) -> KeyboardLayoutFile? {
+        isPad ? (ipad(bundle: bundle) ?? iphone(bundle: bundle)) : iphone(bundle: bundle)
+    }
+
+    private static func load(_ name: String, bundle: Bundle) -> KeyboardLayoutFile? {
+        guard let url = bundle.url(forResource: name, withExtension: "json") else { return nil }
         return try? KeyboardLayoutFile.load(contentsOf: url)
     }
 }

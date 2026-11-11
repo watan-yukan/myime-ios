@@ -21,6 +21,13 @@ final class KeyboardKeysView: UIView {
     var onAlternateSelected: ((String) -> Void)?
     var contentProvider: (LayoutKey) -> KeyContent = { _ in KeyContent() }
     var alternatesProvider: (LayoutKey) -> [String] = { _ in [] }
+    /// 排版完成後通知（控制器用來把地球鍵按鈕對齊到版面中的地球鍵）。
+    var onLayout: (() -> Void)?
+
+    /// 版面中地球鍵的位置；沒有地球鍵（iPhone）時為 nil。
+    var globeFrame: CGRect? {
+        pageFrames.frames.first { $0.key.type == .globe }?.rect
+    }
 
     /// 放大預覽可往上超出按鍵區的高度（候選列的高度）。
     var previewHeadroom: CGFloat = 44
@@ -126,6 +133,7 @@ final class KeyboardKeysView: UIView {
             resetTouches()
         }
         needsRebuild = false
+        onLayout?()
     }
 
     private func rebuildCaps() {

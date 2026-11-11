@@ -18,6 +18,13 @@ final class KeyboardSnapshotTests: XCTestCase {
         return file
     }()
 
+    private lazy var ipadLayout: KeyboardLayoutFile = {
+        guard let file = LayoutCatalog.ipad(bundle: bundle) else {
+            preconditionFailure("找不到 ipad.json")
+        }
+        return file
+    }()
+
     private var outputDirectory: URL {
         if let path = ProcessInfo.processInfo.environment["SNAPSHOT_DIR"], !path.isEmpty {
             return URL(fileURLWithPath: path, isDirectory: true)
@@ -37,6 +44,7 @@ final class KeyboardSnapshotTests: XCTestCase {
         var pressed: String?
         var uppercase = false
         var mode = InputMode.chinese
+        var ipad = false
     }
 
     private func content(for key: LayoutKey, scene: Scene) -> KeyContent {
@@ -50,6 +58,10 @@ final class KeyboardSnapshotTests: XCTestCase {
         case .space: return KeyContent()
         case .returnKey: return KeyContent(symbol: "return")
         case .page: return KeyContent(text: key.label, isFunctionText: true)
+        case .tab: return KeyContent(symbol: "arrow.right.to.line")
+        case .globe: return KeyContent(symbol: "globe")
+        case .emoji: return KeyContent(symbol: "face.smiling")
+        case .dismiss: return KeyContent(symbol: "keyboard.chevron.compact.down")
         case .langToggle: return KeyContent(text: scene.mode == .chinese ? "中" : "英", isFunctionText: true)
         default: return KeyContent()
         }
@@ -57,8 +69,9 @@ final class KeyboardSnapshotTests: XCTestCase {
 
     private func makeKeyboard(theme: Theme, scene: Scene) -> UIView {
         let palette = theme.palette(isDark: scene.dark)
-        let metrics = layout.metrics.metrics(landscape: scene.landscape)
-        let page = layout.page(scene.page)!
+        let file = scene.ipad ? ipadLayout : layout
+        let metrics = file.metrics.metrics(landscape: scene.landscape)
+        let page = file.page(scene.page)!
         let keysHeight = LayoutEngine.frames(
             for: page, metrics: metrics, containerWidth: scene.width, landscape: scene.landscape).size.height
         let barHeight: CGFloat = 44
@@ -79,6 +92,7 @@ final class KeyboardSnapshotTests: XCTestCase {
 
         let keys = KeyboardKeysView(frame: CGRect(x: 0, y: barHeight, width: scene.width, height: keysHeight))
         keys.previewHeadroom = barHeight
+        keys.showsPreview = !scene.ipad
         keys.contentProvider = { [unowned self] key in self.content(for: key, scene: scene) }
         keys.configure(page: page, metrics: metrics, landscape: scene.landscape)
         keys.applyTheme(palette: palette, metrics: theme.metrics)
@@ -180,6 +194,29 @@ final class KeyboardSnapshotTests: XCTestCase {
             items.append(("橫向數字頁（\(mode)）", makeKeyboard(theme: theme, scene: Scene(page: "numbers", landscape: true, width: 932, dark: dark))))
         }
         try save(sheet(title: "iPhone 橫向 932 pt", items: items, columns: 1), name: "landscape-native")
+    }
+
+    func testIPadSheets() throws {
+        let theme = ThemeCatalog.theme(id: "native", bundle: bundle)
+        var items: [(label: String, view: UIView)] = []
+        for dark in [false, true] {
+            let mode = dark ? "深色" : "淺色"
+            items.append(("iPad 直向字母頁 834 pt（\(mode)）", makeKeyboard(theme: theme, scene: Scene(width: 834, dark: dark, ipad: true))))
+            items.append(("iPad 直向數字頁（\(mode)）", makeKeyboard(theme: theme, scene: Scene(page: "numbers", width: 834, dark: dark, ipad: true))))
+            items.append(("iPad 直向符號頁（\(mode)）", makeKeyboard(theme: theme, scene: Scene(page: "symbols", width: 834, dark: dark, ipad: true))))
+            items.append((
+                "iPad 直向組字（\(mode)）",
+                makeKeyboard(theme: theme, scene: Scene(width: 834, dark: dark, composing: "ab", candidates: ["米", "粎", "籾", "糵"], ipad: true))))
+        }
+        try save(sheet(title: "iPad 直向", items: items, columns: 2), name: "ipad-portrait-native")
+
+        var landscape: [(label: String, view: UIView)] = []
+        for dark in [false, true] {
+            let mode = dark ? "深色" : "淺色"
+            landscape.append(("iPad 橫向字母頁 1194 pt（\(mode)）", makeKeyboard(theme: theme, scene: Scene(landscape: true, width: 1194, dark: dark, ipad: true))))
+            landscape.append(("iPad 橫向數字頁（\(mode)）", makeKeyboard(theme: theme, scene: Scene(page: "numbers", landscape: true, width: 1194, dark: dark, ipad: true))))
+        }
+        try save(sheet(title: "iPad 橫向", items: landscape, columns: 1), name: "ipad-landscape-native")
     }
 
     func testNarrowWidths() throws {

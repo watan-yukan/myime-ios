@@ -136,7 +136,9 @@ public final class KeyboardSession {
     // MARK: - 內部
 
     private func typeCharacter(_ key: LayoutKey) {
-        guard let character = (key.output ?? "").first else { return }
+        // Shift 時改輸出 shiftOutput（例如 iPad 的 `,` 鍵按 Shift 輸出 `!`）
+        let text = (shift.isUppercase && !shift.isAutomatic) ? (key.shiftOutput ?? key.output) : key.output
+        guard let character = (text ?? "").first else { return }
         let event: InputEvent = (character.isLetter && shift.isUppercase) ? .shiftedKey(character) : .key(character)
         perform(event)
         shift.didTypeCharacter()
