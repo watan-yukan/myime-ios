@@ -80,7 +80,7 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
     private let emptyLabel = UILabel()
 
     private let bottomBarHeight: CGFloat = 44
-    private let rowCount: CGFloat = 5
+    private let rowCount: CGFloat = 4  // 比照原生：一欄 4 個
     private let sectionGap: CGFloat = 16
     private let cellID = "emojiCell"
 
@@ -230,9 +230,9 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
         let gridHeight = max(0, bounds.height - bottomBarHeight)
         collectionView.frame = CGRect(x: 0, y: 0, width: bounds.width, height: gridHeight)
 
-        // 一欄 rowCount 個；格子略寬於高，接近原生密度
+        // 一欄 rowCount 個（直的），一欄一欄往右接
         let cellHeight = max(1, floor((gridHeight - 8) / rowCount))
-        let cellWidth = max(cellHeight, floor(bounds.width / 9))
+        let cellWidth = max(cellHeight, floor(bounds.width / 8.4))  // 約 8 欄，右邊露出一點提示可以滑
         let size = CGSize(width: cellWidth, height: cellHeight)
         if flowLayout.itemSize != size {
             flowLayout.itemSize = size
