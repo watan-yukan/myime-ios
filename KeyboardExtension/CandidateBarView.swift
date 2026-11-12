@@ -20,6 +20,10 @@ final class CandidateBarView: UIView {
     var showsDismissTool = true {
         didSet { setNeedsLayout() }
     }
+    /// 原生主題：背景透明，直接露出系統鍵盤底色，和系統容器的圓角區域同色。
+    var usesSystemBackground = false {
+        didSet { render() }
+    }
 
     /// 目前這一列顯示的候選數（展開候選表從這裡之後接續）。
     private(set) var visibleCandidateCount = 0
@@ -110,7 +114,7 @@ final class CandidateBarView: UIView {
 
     private func render() {
         guard let palette else { return }
-        backgroundColor = palette[.candidateBarBackground].uiColor
+        backgroundColor = usesSystemBackground ? .clear : palette[.candidateBarBackground].uiColor
         separator.backgroundColor = palette[.candidateSeparator].uiColor
         let text = palette[.candidateText].uiColor
         let accent = palette[.candidateHighlight].uiColor
@@ -132,7 +136,7 @@ final class CandidateBarView: UIView {
         messageLabel.isHidden = messageLabel.text == nil
 
         for (_, button) in toolButtons {
-            button.isHidden = composing || !showsDismissTool
+            button.isHidden = !showsDismissTool  // 收合鍵一直顯示，組字中也在
             button.tintColor = text.withAlphaComponent(0.75)
         }
         expandButton.tintColor = text
@@ -190,12 +194,16 @@ final class CandidateBarView: UIView {
     }
 
     private func layoutComposing(width: CGFloat, height: CGFloat) {
-        for (_, button) in toolButtons { button.isHidden = true }
+        // 收合鍵固定在最右邊，候選字排在它左邊
+        var rightEdge = width - sideInset
+        for (_, button) in toolButtons.reversed() {
+            guard !button.isHidden else { continue }
+            rightEdge -= 44
+            button.frame = CGRect(x: rightEdge, y: 0, width: 44, height: height)
+        }
 
         let codeWidth = textWidth(state.code, font: codeFont) + 20
         codeLabel.frame = CGRect(x: sideInset, y: (height - 28) / 2, width: codeWidth, height: 28)
-
-        let rightEdge = width - sideInset
 
         let left = codeLabel.frame.maxX + 6
         messageLabel.frame = CGRect(x: left, y: 0, width: max(0, rightEdge - left), height: height)

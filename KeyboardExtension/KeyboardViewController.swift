@@ -442,7 +442,10 @@ final class KeyboardViewController: UIInputViewController {
             systemIsDark: traitCollection.userInterfaceStyle == .dark,
             host: hostAppearance())
         let palette = theme.palette(isDark: isDark)
-        rootView.backgroundColor = palette[.keyboardBackground].uiColor
+        // 原生主題用系統鍵盤底色（透明），和系統容器上方的圓角區域一致；其他主題才自己塗底色
+        let usesSystemBackground = theme.id == "native"
+        rootView.backgroundColor = usesSystemBackground ? .clear : palette[.keyboardBackground].uiColor
+        candidateBar.usesSystemBackground = usesSystemBackground
         keysView.applyTheme(palette: palette, metrics: theme.metrics)
         candidateBar.applyTheme(palette: palette, metrics: theme.metrics)
         candidatePanel.applyTheme(palette: palette)
