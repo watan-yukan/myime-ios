@@ -4,11 +4,10 @@ import IMECore
 /// 候選列：永遠佔位，鍵盤高度不因開始組字而跳動（FR-U21）。
 ///
 /// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），接著是候選字，放不下時有展開鈕（FR-K06）
-/// - 沒在組字：顯示工具按鈕（切換主題、收起鍵盤）；表情符號改由左下角的表情鍵開啟
+/// - 沒在組字：顯示「收起鍵盤」按鈕（主題在 MyIME App 的「主題」頁切換）；表情符號改由左下角的表情鍵開啟
 /// - 錯碼時顯示「無此字」（FR-K07）
 final class CandidateBarView: UIView {
     enum Tool {
-        case theme
         case dismiss
     }
 
@@ -64,7 +63,6 @@ final class CandidateBarView: UIView {
         addSubview(separator)
 
         let tools: [(Tool, String, String)] = [
-            (.theme, "paintpalette", "切換主題"),
             (.dismiss, "keyboard.chevron.compact.down", "收起鍵盤"),
         ]
         for (tool, symbol, label) in tools {

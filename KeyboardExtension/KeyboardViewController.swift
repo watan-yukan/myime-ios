@@ -329,7 +329,6 @@ final class KeyboardViewController: UIInputViewController {
 
     private func handleTool(_ tool: CandidateBarView.Tool) {
         switch tool {
-        case .theme: cycleTheme()
         case .dismiss: dismissKeyboard()
         }
     }
@@ -388,17 +387,6 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     // MARK: - 主題與外觀
-
-    private func cycleTheme() {
-        let ids = ThemeCatalog.builtinIDs
-        let current = ids.firstIndex(of: settings.theme.id) ?? 0
-        settings.theme.id = ids[(current + 1) % ids.count]
-        if let url = SharedStorage.url(SharedStorage.FileName.settings) {
-            try? SettingsStore(url: url).save(settings)
-        }
-        session?.settings = settings
-        applyTheme()
-    }
 
     private func hostAppearance() -> HostKeyboardAppearance {
         switch textDocumentProxy.keyboardAppearance {
