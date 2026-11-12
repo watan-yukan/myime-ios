@@ -250,7 +250,7 @@ final class KeyboardSnapshotTests: XCTestCase {
             let mode = dark ? "深色" : "淺色"
             let palette = theme.palette(isDark: dark)
 
-            let emoji = EmojiPanelView(frame: CGRect(x: 0, y: 0, width: 430, height: 225))
+            let emoji = EmojiPanelView(frame: CGRect(x: 0, y: 0, width: 430, height: 281))  // 佔滿整個鍵盤（含候選列）
             emoji.applyTheme(palette: palette)
             emoji.reload()
             emoji.layoutIfNeeded()

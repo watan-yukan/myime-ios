@@ -413,8 +413,13 @@ final class KeyboardViewController: UIInputViewController {
         candidatePanel.isHidden = false
     }
 
+    /// 表情頁比照原生佔滿整個鍵盤（蓋住候選列），表情可以更大。
+    private var emojiPanelFrame: CGRect {
+        CGRect(x: 0, y: 0, width: keysView.frame.width, height: keysView.frame.maxY)
+    }
+
     private func showEmojiPanel() {
-        emojiPanel.frame = keysView.frame
+        emojiPanel.frame = emojiPanelFrame
         emojiPanel.applyTheme(palette: theme.palette(isDark: isDark))
         emojiPanel.reload()
         emojiPanel.isHidden = false
@@ -617,7 +622,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
         keysView.frame = CGRect(x: 0, y: candidateBarHeight, width: width, height: keysHeight)
         candidatePanel.frame = keysView.frame
-        emojiPanel.frame = keysView.frame
+        emojiPanel.frame = emojiPanelFrame
 
         let key = currentConfigKey() + String(format: "|%.1f", metrics.keyHeight)
         if key != configuredKey {

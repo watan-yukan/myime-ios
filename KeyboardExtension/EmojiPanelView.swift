@@ -269,7 +269,11 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellID, for: indexPath)
-        (cell as? EmojiCell)?.label.text = emojis(in: indexPath.section)[indexPath.item]
+        if let cell = cell as? EmojiCell {
+            cell.label.text = emojis(in: indexPath.section)[indexPath.item]
+            // 表情大小跟著格子高度走（約 72%），接近原生
+            cell.label.font = UIFont.systemFont(ofSize: floor(flowLayout.itemSize.height * 0.72))
+        }
         return cell
     }
 
