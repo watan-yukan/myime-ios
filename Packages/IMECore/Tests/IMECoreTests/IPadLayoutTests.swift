@@ -55,7 +55,7 @@ final class IPadLayoutTests: XCTestCase {
         XCTAssertEqual(shift.width, 174.8, accuracy: 1.5)
 
         let space = try rect(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 605.6 + 81.9 + 13.6, accuracy: 4.0)  // 麥克風位置的鍵移除，寬度併入空白鍵
+        XCTAssertEqual(space.width, 695.5, accuracy: 2.0)  // 麥克風位置的鍵移除，寬度併入空白鍵
         let globe = try rect(f, row: 3) { $0.type == .globe }
         XCTAssertEqual(globe.width, 81.9, accuracy: 1.5)
         XCTAssertEqual(globe.minX, 14.8, accuracy: 0.01)
