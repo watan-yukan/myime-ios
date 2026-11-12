@@ -76,51 +76,6 @@ final class KeyboardViewController: UIInputViewController {
     private var tableStamp: Date?
     private var tableHint: String? = "請先在 MyIME App 匯入碼表"
 
-    /// 開發期間：在鍵盤最上緣顯示高度數字（只有高度，沒有任何輸入內容）。正式版改為 false 或刪除。
-    private static let showHeightDebug = true
-    private let heightDebugLabel: UILabel = {
-        let label = UILabel()
-        label.font = .systemFont(ofSize: 9)
-        label.textColor = .systemYellow
-        label.isUserInteractionEnabled = false
-        label.numberOfLines = 0
-        label.backgroundColor = UIColor.black.withAlphaComponent(0.6)
-        return label
-    }()
-
-    /// 開發期間：列出影響鍵盤高度的約束（只有系統類別名稱與數值，沒有輸入內容）。
-    private func heightDiagnostics(_ root: UIView) -> String {
-        func name(_ item: AnyObject?) -> String {
-            guard let item else { return "nil" }
-            if item === root { return "root" }
-            if item === root.superview { return "super" }
-            return String(describing: type(of: item))
-        }
-        let superName = root.superview.map { String(describing: type(of: $0)) } ?? "nil"
-        let superHeight = root.superview?.bounds.height ?? -1
-        var lines = [String(
-            format: "view==input %@ / tamic %@ / selfSizing %@ / super %@ %.0f",
-            (inputView === view) ? "Y" : "N",
-            root.translatesAutoresizingMaskIntoConstraints ? "Y" : "N",
-            ((root as? UIInputView)?.allowsSelfSizing ?? false) ? "Y" : "N",
-            superName, superHeight)]
-        let heightConstraints = root.constraintsAffectingLayout(for: .vertical)
-            .filter { $0.firstAttribute == .height || $0.secondAttribute == .height }
-        for c in heightConstraints.prefix(4) {
-            lines.append(String(
-                format: "%@ %@ c=%.0f p=%.0f %@ act=%@",
-                name(c.firstItem), name(c.secondItem), c.constant, c.priority.rawValue,
-                c.identifier ?? "-", c.isActive ? "Y" : "N"))
-        }
-        if let sizerHeight {
-            lines.append(String(
-                format: "sizer c=%.0f p=%.0f act=%@ frame=%.0f",
-                sizerHeight.constant, sizerHeight.priority.rawValue,
-                sizerHeight.isActive ? "Y" : "N", sizerView.frame.height))
-        }
-        return lines.joined(separator: "\n")
-    }
-
     /// 隱形 view 上下貼齊 root、高度為期望值；系統以內容計算自訂鍵盤高度時會採用。
     private func setupSizer(in root: UIView) {
         sizerView.isUserInteractionEnabled = false
@@ -600,7 +555,6 @@ final class KeyboardViewController: UIInputViewController {
             metrics.bottomInset *= scale
             keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
         }
-        let total = candidateBarHeight + keysHeight
         // 向系統要求的永遠是「完整」高度，不是縮放後的高度；
         // 否則第一次拿到較小的預設高度後，就會一直要求那個小高度。
         let requested = candidateBarHeight + keysHeightRequested
@@ -608,18 +562,6 @@ final class KeyboardViewController: UIInputViewController {
         (root as? KeyboardRootView)?.desiredHeight = requested
         if let sizerHeight, abs(sizerHeight.constant - requested) > 0.5 {
             sizerHeight.constant = requested
-        }
-
-        if Self.showHeightDebug {
-            let origin = root.superview.map { root.convert(CGPoint.zero, to: $0).y } ?? -1
-            heightDebugLabel.text = String(
-                format: "要求 %.0f / 實際 %.0f / 縮放後 %.0f / 頂端偏移 %.0f / 螢幕 %.0f",
-                requested, root.bounds.height, total, origin,
-                UIScreen.main.bounds.height)
-                + "\n" + heightDiagnostics(root)
-            heightDebugLabel.frame = CGRect(x: 4, y: 0, width: width - 8, height: 60)
-            if heightDebugLabel.superview == nil { root.addSubview(heightDebugLabel) }
-            root.bringSubviewToFront(heightDebugLabel)
         }
 
         candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
