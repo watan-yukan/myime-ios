@@ -83,8 +83,37 @@ final class KeyboardViewController: UIInputViewController {
         label.font = .systemFont(ofSize: 9)
         label.textColor = .systemYellow
         label.isUserInteractionEnabled = false
+        label.numberOfLines = 0
+        label.backgroundColor = UIColor.black.withAlphaComponent(0.6)
         return label
     }()
+
+    /// 開發期間：列出影響鍵盤高度的約束（只有系統類別名稱與數值，沒有輸入內容）。
+    private func heightDiagnostics(_ root: UIView) -> String {
+        func name(_ item: AnyObject?) -> String {
+            guard let item else { return "nil" }
+            if item === root { return "root" }
+            if item === root.superview { return "super" }
+            return String(describing: type(of: item))
+        }
+        let superName = root.superview.map { String(describing: type(of: $0)) } ?? "nil"
+        let superHeight = root.superview?.bounds.height ?? -1
+        var lines = [String(
+            format: "view==input %@ / tamic %@ / selfSizing %@ / super %@ %.0f",
+            (inputView === view) ? "Y" : "N",
+            root.translatesAutoresizingMaskIntoConstraints ? "Y" : "N",
+            ((root as? UIInputView)?.allowsSelfSizing ?? false) ? "Y" : "N",
+            superName, superHeight)]
+        let heightConstraints = root.constraintsAffectingLayout(for: .vertical)
+            .filter { $0.firstAttribute == .height || $0.secondAttribute == .height }
+        for c in heightConstraints.prefix(4) {
+            lines.append(String(
+                format: "%@ %@ c=%.0f p=%.0f %@ act=%@",
+                name(c.firstItem), name(c.secondItem), c.constant, c.priority.rawValue,
+                c.identifier ?? "-", c.isActive ? "Y" : "N"))
+        }
+        return lines.joined(separator: "\n")
+    }
     private var heightConstraint: NSLayoutConstraint?
     private var configuredKey = ""
     private var pageForcedByKeyboardType = false
@@ -542,7 +571,9 @@ final class KeyboardViewController: UIInputViewController {
         (root as? KeyboardRootView)?.desiredHeight = requested
         if heightConstraint == nil {
             let constraint = root.heightAnchor.constraint(equalToConstant: requested)
-            constraint.priority = UILayoutPriority(999)  // 避免與系統約束衝突
+            // 實驗：999 時系統固定給 224pt；改成必要（1000）看系統是否接受
+            constraint.priority = .required
+            constraint.identifier = "myime.height"
             constraint.isActive = true
             heightConstraint = constraint
         } else if heightConstraint?.constant != requested {
@@ -555,7 +586,8 @@ final class KeyboardViewController: UIInputViewController {
                 format: "要求 %.0f / 實際 %.0f / 縮放後 %.0f / 頂端偏移 %.0f / 螢幕 %.0f",
                 requested, root.bounds.height, total, origin,
                 UIScreen.main.bounds.height)
-            heightDebugLabel.frame = CGRect(x: 4, y: 0, width: width - 8, height: 12)
+                + "\n" + heightDiagnostics(root)
+            heightDebugLabel.frame = CGRect(x: 4, y: 0, width: width - 8, height: 60)
             if heightDebugLabel.superview == nil { root.addSubview(heightDebugLabel) }
             root.bringSubviewToFront(heightDebugLabel)
         }
