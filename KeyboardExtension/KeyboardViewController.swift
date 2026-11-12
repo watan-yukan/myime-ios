@@ -165,7 +165,8 @@ final class KeyboardViewController: UIInputViewController {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
         layoutFile = LayoutCatalog.layout(isPad: isPad)
         keysView.showsPreview = !isPad  // iPad 沒有按下放大預覽（比照原生）
-        candidateBar.showsDismissTool = !isPad  // iPad 右下角已有收合鍵（比照原生）
+        // 候選列不放收合鍵：iPhone 比照原生沒有收合鍵，改用最上面那條快速下滑；iPad 右下角另有收合鍵
+        candidateBar.showsDismissTool = false
 
         let root: UIView = rootView
         root.addSubview(candidateBar)
@@ -176,6 +177,8 @@ final class KeyboardViewController: UIInputViewController {
         root.addSubview(emojiPanel)
         candidatePanel.isHidden = true
         emojiPanel.isHidden = true
+        addSwipeDownToDismiss(to: candidateBar)
+        addSwipeDownToDismiss(to: emojiPanel)
 
         wireCallbacks()
         loadSettings()
@@ -641,5 +644,45 @@ final class KeyboardViewController: UIInputViewController {
         } catch {
             logger.error("write heartbeat failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+}
+
+// MARK: - 由上往下快速滑動收起鍵盤
+
+extension KeyboardViewController: UIGestureRecognizerDelegate {
+    /// 只認鍵盤最上面這一條（候選列高度）；按鍵區的手勢留給打字與之後的下滑輸入。
+    private var dismissStripHeight: CGFloat { 56 }
+
+    fileprivate func addSwipeDownToDismiss(to view: UIView) {
+        let pan = UIPanGestureRecognizer(target: self, action: #selector(handleDismissPan(_:)))
+        pan.delegate = self
+        pan.cancelsTouchesInView = true  // 認定是下滑後，取消候選字或表情的點選
+        view.addGestureRecognizer(pan)
+    }
+
+    @objc private func handleDismissPan(_ pan: UIPanGestureRecognizer) {
+        guard pan.state == .ended, let view = pan.view else { return }
+        let translation = pan.translation(in: view)
+        let velocity = pan.velocity(in: view)
+        // 要「快速」往下：位移超過 30pt、速度超過 500pt/s，且明顯是垂直方向
+        if translation.y > 30, velocity.y > 500, translation.y > abs(translation.x) * 1.5 {
+            dismissKeyboard()
+        }
+    }
+
+    func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        guard let pan = gestureRecognizer as? UIPanGestureRecognizer, let view = pan.view,
+              view === candidateBar || view === emojiPanel else { return true }
+        let start = pan.location(in: view)
+        guard start.y - pan.translation(in: view).y <= dismissStripHeight else { return false }
+        let velocity = pan.velocity(in: view)
+        return velocity.y > 0 && velocity.y > abs(velocity.x)
+    }
+
+    func gestureRecognizer(
+        _ gestureRecognizer: UIGestureRecognizer,
+        shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
+    ) -> Bool {
+        true
     }
 }
