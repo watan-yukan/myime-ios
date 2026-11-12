@@ -31,7 +31,7 @@ final class IPadLayoutTests: XCTestCase {
             XCTAssertEqual(page.rows.count, 4, name)
             XCTAssertTrue(page.rows[3].keys.contains { $0.type == .globe }, "FR-U16：iPad 每一頁都要有地球鍵（\(name)）")
             XCTAssertTrue(page.rows[3].keys.contains { $0.type == .dismiss }, "\(name) 要有收鍵盤")
-            XCTAssertTrue(page.rows[3].keys.contains { $0.type == .emoji }, "麥克風位置改放表情鍵（\(name)）")
+            XCTAssertTrue(page.rows[1].keys.contains { $0.type == .emoji }, "原生「注音」位置放表情鍵（\(name)）")
         }
     }
 
@@ -46,7 +46,7 @@ final class IPadLayoutTests: XCTestCase {
         XCTAssertEqual(tab.minX, 14.8, accuracy: 0.01)
         XCTAssertEqual(tab.width, 104.6, accuracy: 1.0)
 
-        let lang = try rect(f, row: 1) { $0.type == .langToggle }
+        let lang = try rect(f, row: 1) { $0.type == .emoji }
         XCTAssertEqual(lang.width, 132.7, accuracy: 1.5)  // 「注音」鍵位置
         let ret = try rect(f, row: 1) { $0.type == .returnKey }
         XCTAssertEqual(ret.width, 170.9, accuracy: 1.5)
@@ -55,7 +55,7 @@ final class IPadLayoutTests: XCTestCase {
         XCTAssertEqual(shift.width, 174.8, accuracy: 1.5)
 
         let space = try rect(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 605.6, accuracy: 2.0)
+        XCTAssertEqual(space.width, 605.6 + 81.9 + 13.6, accuracy: 4.0)  // 麥克風位置的鍵移除，寬度併入空白鍵
         let globe = try rect(f, row: 3) { $0.type == .globe }
         XCTAssertEqual(globe.width, 81.9, accuracy: 1.5)
         XCTAssertEqual(globe.minX, 14.8, accuracy: 0.01)
@@ -71,7 +71,7 @@ final class IPadLayoutTests: XCTestCase {
         let ret = try rect(f, row: 1) { $0.type == .returnKey }
         XCTAssertEqual(ret.width, 120.1, accuracy: 1.5)
         let space = try rect(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 409.6, accuracy: 2.0)
+        XCTAssertEqual(space.width, 409.6 + 55.4 + 9.4, accuracy: 4.0)  // 麥克風位置的鍵移除，寬度併入空白鍵
         let backspace = try rect(f, row: 0) { $0.type == .backspace }
         XCTAssertEqual(backspace.width, 73.3, accuracy: 1.0)
     }

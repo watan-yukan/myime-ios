@@ -3,12 +3,11 @@ import IMECore
 
 /// 候選列：永遠佔位，鍵盤高度不因開始組字而跳動（FR-U21）。
 ///
-/// - 組字中：左邊是組字區（字根），接著是候選字，最右邊固定一格英文選項（FR-E01），放不下時有展開鈕（FR-K06）
-/// - 沒在組字：顯示工具按鈕（表情符號、切換主題、收起鍵盤）
+/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），接著是候選字，放不下時有展開鈕（FR-K06）
+/// - 沒在組字：顯示工具按鈕（切換主題、收起鍵盤）；表情符號改由左下角的表情鍵開啟
 /// - 錯碼時顯示「無此字」（FR-K07）
 final class CandidateBarView: UIView {
     enum Tool {
-        case emoji
         case theme
         case dismiss
     }
@@ -30,7 +29,6 @@ final class CandidateBarView: UIView {
 
     private let codeLabel = UILabel()
     private let messageLabel = UILabel()
-    private let englishButton = UIButton(type: .system)
     private let expandButton = UIButton(type: .system)
     private let separator = UIView()
     private var candidateButtons: [UIButton] = []
@@ -49,14 +47,14 @@ final class CandidateBarView: UIView {
         codeLabel.textAlignment = .center
         codeLabel.layer.cornerRadius = 6
         codeLabel.layer.masksToBounds = true
+        // 點組字區直接送出打的英文字母
+        codeLabel.isUserInteractionEnabled = true
+        codeLabel.accessibilityTraits = .button
+        codeLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(codeTapped)))
         addSubview(codeLabel)
 
         messageLabel.font = UIFont.systemFont(ofSize: 14)
         addSubview(messageLabel)
-
-        englishButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
-        englishButton.addAction(UIAction { [weak self] _ in self?.onSelectEnglish?() }, for: .touchUpInside)
-        addSubview(englishButton)
 
         expandButton.setImage(UIImage(systemName: "chevron.down"), for: .normal)
         expandButton.accessibilityLabel = "展開候選字"
@@ -66,7 +64,6 @@ final class CandidateBarView: UIView {
         addSubview(separator)
 
         let tools: [(Tool, String, String)] = [
-            (.emoji, "face.smiling", "表情符號"),
             (.theme, "paintpalette", "切換主題"),
             (.dismiss, "keyboard.chevron.compact.down", "收起鍵盤"),
         ]
@@ -83,6 +80,11 @@ final class CandidateBarView: UIView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    @objc private func codeTapped() {
+        guard state.isComposing else { return }
+        onSelectEnglish?()
     }
 
     // MARK: - 更新
@@ -117,9 +119,7 @@ final class CandidateBarView: UIView {
         codeLabel.backgroundColor = palette[.composingBackground].uiColor
         codeLabel.textColor = palette[.composingText].uiColor
 
-        englishButton.isHidden = !composing
-        englishButton.setTitle(state.englishOption, for: .normal)
-        englishButton.setTitleColor(text.withAlphaComponent(0.65), for: .normal)
+        codeLabel.accessibilityLabel = composing ? "送出英文 (state.code)" : nil
 
         messageLabel.textColor = text.withAlphaComponent(0.6)
         switch (composing, state.status) {
@@ -193,21 +193,20 @@ final class CandidateBarView: UIView {
         let codeWidth = textWidth(state.code, font: codeFont) + 20
         codeLabel.frame = CGRect(x: sideInset, y: (height - 28) / 2, width: codeWidth, height: 28)
 
-        let englishWidth = max(40, textWidth(state.englishOption ?? "", font: englishButton.titleLabel?.font ?? candidateFont) + 20)
-        englishButton.frame = CGRect(x: width - sideInset - englishWidth, y: 0, width: englishWidth, height: height)
+        let rightEdge = width - sideInset
 
         let left = codeLabel.frame.maxX + 6
-        messageLabel.frame = CGRect(x: left, y: 0, width: max(0, englishButton.frame.minX - left), height: height)
+        messageLabel.frame = CGRect(x: left, y: 0, width: max(0, rightEdge - left), height: height)
 
         let candidates = state.candidates
-        var available = englishButton.frame.minX - left - 4
+        var available = rightEdge - left - 4
         var fit = CandidateLayout.fittingCount(
             candidates, availableWidth: available, itemPadding: 16, minItemWidth: 36,
             textWidth: { textWidth($0, font: candidateFont) })
         let needsExpand = !candidates.isEmpty && fit < candidates.count
         expandButton.isHidden = !needsExpand
         if needsExpand {
-            expandButton.frame = CGRect(x: englishButton.frame.minX - 36, y: 0, width: 36, height: height)
+            expandButton.frame = CGRect(x: rightEdge - 36, y: 0, width: 36, height: height)
             available -= 36
             fit = CandidateLayout.fittingCount(
                 candidates, availableWidth: available, itemPadding: 16, minItemWidth: 36,

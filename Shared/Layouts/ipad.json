@@ -17,7 +17,7 @@
           { "type": "backspace", "width": 1.295 }
         ] },
         { "keys": [
-          { "type": "langToggle", "width": 1.64 },
+          { "type": "emoji", "width": 1.64 },
           { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" },
           { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" },
           { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" },
@@ -35,8 +35,7 @@
         { "keys": [
           { "type": "globe", "width": 1.06 },
           { "type": "page", "target": "numbers", "label": ".?123", "width": 1.075 },
-          { "type": "emoji", "width": 1.06 },
-          { "type": "space", "width": 7.23 },
+          { "type": "space", "width": 8.29 },
           { "type": "page", "target": "numbers", "label": ".?123", "width": 1.585 },
           { "type": "dismiss", "width": 1.585 }
         ] }
@@ -51,7 +50,7 @@
           { "type": "backspace", "width": 1.295 }
         ] },
         { "keys": [
-          { "type": "langToggle", "width": 1.64 },
+          { "type": "emoji", "width": 1.64 },
           { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" },
           { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" },
           { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" },
@@ -69,8 +68,7 @@
         { "keys": [
           { "type": "globe", "width": 1.016 },
           { "type": "page", "target": "numbers", "label": ".?123", "width": 1.026 },
-          { "type": "emoji", "width": 1.016 },
-          { "type": "space", "width": 7.51 },
+          { "type": "space", "width": 8.526 },
           { "type": "page", "target": "numbers", "label": ".?123", "width": 1.52 },
           { "type": "dismiss", "width": 1.52 }
         ] }
@@ -84,7 +82,7 @@
           { "type": "backspace", "width": 1.295 }
         ] },
         { "keys": [
-          { "type": "langToggle", "width": 1.64 },
+          { "type": "emoji", "width": 1.64 },
           { "output": "@", "secondary": "€" }, { "output": "#", "secondary": "£" }, { "output": "$", "secondary": "¥" },
           { "output": "&", "secondary": "_" }, { "output": "*", "secondary": "^" }, { "output": "(", "secondary": "[" },
           { "output": ")", "secondary": "]" }, { "output": "'", "secondary": "{" }, { "output": "\"", "secondary": "}" },
@@ -100,8 +98,7 @@
         { "keys": [
           { "type": "globe", "width": 1.06 },
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.075 },
-          { "type": "emoji", "width": 1.06 },
-          { "type": "space", "width": 7.23 },
+          { "type": "space", "width": 8.29 },
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.585 },
           { "type": "dismiss", "width": 1.585 }
         ] }
@@ -115,7 +112,7 @@
           { "type": "backspace", "width": 1.295 }
         ] },
         { "keys": [
-          { "type": "langToggle", "width": 1.64 },
+          { "type": "emoji", "width": 1.64 },
           "€", "£", "¥", "_", "^", "[", "]", "{", "}",
           { "type": "return", "width": 2.115 }
         ] },
@@ -127,8 +124,7 @@
         { "keys": [
           { "type": "globe", "width": 1.06 },
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.075 },
-          { "type": "emoji", "width": 1.06 },
-          { "type": "space", "width": 7.23 },
+          { "type": "space", "width": 8.29 },
           { "type": "page", "target": "alpha", "label": "ABC", "width": 1.585 },
           { "type": "dismiss", "width": 1.585 }
         ] }

@@ -108,7 +108,7 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
             addSubview(button)
         }
 
-        closeButton.setTitle("ABC", for: .normal)
+        closeButton.setTitle("中", for: .normal)  // 回到中文鍵盤
         closeButton.titleLabel?.font = UIFont.systemFont(ofSize: 16)
         closeButton.addAction(UIAction { [weak self] _ in self?.onClose?() }, for: .touchUpInside)
         addSubview(closeButton)

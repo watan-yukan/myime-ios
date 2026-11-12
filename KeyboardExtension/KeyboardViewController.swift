@@ -329,7 +329,6 @@ final class KeyboardViewController: UIInputViewController {
 
     private func handleTool(_ tool: CandidateBarView.Tool) {
         switch tool {
-        case .emoji: showEmojiPanel()
         case .theme: cycleTheme()
         case .dismiss: dismissKeyboard()
         }
