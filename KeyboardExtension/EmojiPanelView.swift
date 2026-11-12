@@ -59,7 +59,7 @@ enum RecentEmojiStore {
 /// 表情符號頁（FR-U24），比照原生：
 /// - 所有類別接成一條**橫向**捲動的長列，左右滑會連續經過各類別
 /// - 最下面一排：「中」（回鍵盤）、最近使用與各類別圖示、⌫；捲動時目前類別的圖示跟著亮起，點圖示跳到該類別
-final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionViewDelegate {
+final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     var onInsert: ((String) -> Void)?
     var onBackspace: (() -> Void)?
     var onClose: (() -> Void)?
@@ -271,6 +271,14 @@ final class EmojiPanelView: UIView, UICollectionViewDataSource, UICollectionView
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellID, for: indexPath)
         (cell as? EmojiCell)?.label.text = emojis(in: indexPath.section)[indexPath.item]
         return cell
+    }
+
+    /// 空的類別（例如還沒有最近使用）不留邊距，避免最左邊空一段。
+    func collectionView(
+        _ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout,
+        insetForSectionAt section: Int
+    ) -> UIEdgeInsets {
+        emojis(in: section).isEmpty ? .zero : flowLayout.sectionInset
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
