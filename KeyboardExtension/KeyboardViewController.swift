@@ -5,6 +5,16 @@ import IMECore
 /// 鍵盤擴充的根 view：宣告支援按鍵音（`playInputClick` 需要）。
 final class KeyboardRootView: UIInputView, UIInputViewAudioFeedback {
     var enableInputClicksWhenVisible: Bool { true }
+
+    /// 鍵盤希望的高度；`allowsSelfSizing` 為 true 時系統會參考 intrinsic size。
+    var desiredHeight: CGFloat = 0 {
+        didSet { if oldValue != desiredHeight { invalidateIntrinsicContentSize() } }
+    }
+
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric,
+               height: desiredHeight > 0 ? desiredHeight : UIView.noIntrinsicMetric)
+    }
 }
 
 /// 把 `UITextDocumentProxy` 包成引擎看得懂的輸入框；記錄最後一次自己改動輸入框的時間，
@@ -525,21 +535,25 @@ final class KeyboardViewController: UIInputViewController {
             keysHeight = keysView.requiredHeight(for: page, metrics: metrics, width: width, landscape: landscape)
         }
         let total = candidateBarHeight + keysHeight
+        // 向系統要求的永遠是「完整」高度，不是縮放後的高度；
+        // 否則第一次拿到較小的預設高度後，就會一直要求那個小高度。
+        let requested = candidateBarHeight + keysHeightRequested
 
+        (root as? KeyboardRootView)?.desiredHeight = requested
         if heightConstraint == nil {
-            let constraint = root.heightAnchor.constraint(equalToConstant: total)
+            let constraint = root.heightAnchor.constraint(equalToConstant: requested)
             constraint.priority = UILayoutPriority(999)  // 避免與系統約束衝突
             constraint.isActive = true
             heightConstraint = constraint
-        } else if heightConstraint?.constant != total {
-            heightConstraint?.constant = total
+        } else if heightConstraint?.constant != requested {
+            heightConstraint?.constant = requested
         }
 
         if Self.showHeightDebug {
             let origin = root.superview.map { root.convert(CGPoint.zero, to: $0).y } ?? -1
             heightDebugLabel.text = String(
                 format: "要求 %.0f / 實際 %.0f / 縮放後 %.0f / 頂端偏移 %.0f / 螢幕 %.0f",
-                candidateBarHeight + keysHeightRequested, root.bounds.height, total, origin,
+                requested, root.bounds.height, total, origin,
                 UIScreen.main.bounds.height)
             heightDebugLabel.frame = CGRect(x: 4, y: 0, width: width - 8, height: 12)
             if heightDebugLabel.superview == nil { root.addSubview(heightDebugLabel) }
