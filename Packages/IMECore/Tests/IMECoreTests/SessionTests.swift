@@ -376,6 +376,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.spaceSwipeUpEnglish, "FR-E04：預設開啟")
         XCTAssertFalse(s.spaceSwipeUpAppendSpace)
         XCTAssertFalse(s.numberRow, "FR-U22：預設關閉")
+        XCTAssertTrue(s.flickSecondary, "FR-U25：下滑輸入預設開啟")
         XCTAssertEqual(s.composingDisplay, .bar, "FR-K13：預設顯示在鍵盤上方")
         XCTAssertEqual(s.theme, ThemeSelection(id: "native", appearance: .system))
         XCTAssertEqual(s.clipboard.maxItems, 20)
@@ -408,6 +409,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(s.theme.id, "oled")
         XCTAssertEqual(s.theme.appearance, .system)
         XCTAssertTrue(s.haptics)
+        XCTAssertTrue(s.flickSecondary, "舊設定檔沒有這個欄位時用預設值")
     }
 
     func testCorruptFileFallsBackToDefaultsAndKeepsTheOldFile() throws {

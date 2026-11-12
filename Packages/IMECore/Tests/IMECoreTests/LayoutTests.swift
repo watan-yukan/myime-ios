@@ -115,12 +115,67 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(z.minX, 70.0, accuracy: 0.6)  // 量測 70.0（含 spacer 的間距 14.7）
         XCTAssertEqual(z.minX - shift.maxX, 14.7, accuracy: 0.4)
 
-        let space = try find(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 205.5, accuracy: 0.6)  // 量測 205.5
-        let ret = try find(f, row: 3) { $0.type == .returnKey }
-        XCTAssertEqual(ret.width, 100.6, accuracy: 0.8)  // 量測 100.6
+        // 底排（FR-U26，UI 規格 4.5）：, . 對齊 n m；123 維持原生寬度，空白與 Return 分配其餘空間
         let page = try find(f, row: 3) { $0.type == .page }
         XCTAssertEqual(page.width, 47.1, accuracy: 0.6)  // 量測 47.1
+        let space = try find(f, row: 3) { $0.type == .space }
+        XCTAssertEqual(space.width, 161.4, accuracy: 1.0)  // 430 pt 寬約 163
+        let ret = try find(f, row: 3) { $0.type == .returnKey }
+        XCTAssertEqual(ret.width, 57.7, accuracy: 1.0)  // 430 pt 寬約 58
+        XCTAssertEqual(ret.maxX, 430 - 6.5, accuracy: 0.01)
+    }
+
+    func testCommaAndPeriodAlignWithNAndM() throws {
+        let layout = try loadIPhone()
+        for landscape in [false, true] {
+            let widths: [CGFloat] = landscape ? [667, 844, 932] : [320, 375, 390, 393, 402, 430, 440]
+            for width in widths {
+                let f = try frames(layout, width: width, landscape: landscape)
+                let n = try find(f, row: 2) { $0.output == "n" }
+                let m = try find(f, row: 2) { $0.output == "m" }
+                let comma = try find(f, row: 3) { $0.output == "," }
+                let period = try find(f, row: 3) { $0.output == "." }
+                let message = "寬 \(width)\(landscape ? " 橫向" : "")"
+                XCTAssertEqual(comma.minX, n.minX, accuracy: 0.01, message)
+                XCTAssertEqual(comma.width, n.width, accuracy: 0.01, message)
+                XCTAssertEqual(period.minX, m.minX, accuracy: 0.01, message)
+                XCTAssertEqual(period.width, m.width, accuracy: 0.01, message)
+                let space = try find(f, row: 3) { $0.type == .space }
+                XCTAssertEqual(comma.minX - space.maxX, 6, accuracy: 0.01, "空白鍵右緣留一個鍵距：\(message)")
+            }
+        }
+    }
+
+    func testCommaAndPeriodKeysOutputAndFlick() throws {
+        let row = try XCTUnwrap(try loadIPhone().page("alpha")?.rows[3])
+        let comma = try XCTUnwrap(row.keys.first { $0.output == "," })
+        let period = try XCTUnwrap(row.keys.first { $0.output == "." })
+        XCTAssertEqual(comma.secondary, "!")
+        XCTAssertEqual(comma.shiftOutput, "!")
+        XCTAssertEqual(period.secondary, "?")
+        XCTAssertEqual(period.shiftOutput, "?")
+    }
+
+    func testIPhoneLettersHaveIPadSecondaryCharacters() throws {
+        let rows = try XCTUnwrap(try loadIPhone().page("alpha")?.rows)
+        func secondaries(_ row: Int) -> String {
+            rows[row].keys.filter { $0.output?.first?.isLetter == true }.compactMap(\.secondary).joined()
+        }
+        XCTAssertEqual(secondaries(0), "1234567890")
+        XCTAssertEqual(secondaries(1), "@#$&*()'\"")
+        XCTAssertEqual(secondaries(2), "%-+=/;:")
+    }
+
+    func testAlignWithMissingTargetFallsBackToNormalLayout() throws {
+        let page = LayoutPage(rows: [
+            LayoutRow(keys: [LayoutKey(char: "a"), LayoutKey(char: "b")]),
+            LayoutRow(keys: [LayoutKey(type: .space, width: 1), LayoutKey(type: .char, output: ".", alignWith: "zzz")]),
+        ])
+        let metrics = OrientationMetrics(sideMargin: 0, keyGap: 10, rowGap: 0, keyHeight: 10)
+        let f = LayoutEngine.frames(for: page, metrics: metrics, containerWidth: 210, landscape: false)
+        let period = try find(f, row: 1) { $0.output == "." }
+        XCTAssertEqual(period.minX, 110, accuracy: 0.01, "找不到對齊目標時照一般比例排")
+        XCTAssertEqual(period.width, 100, accuracy: 0.01)
     }
 
     func testLandscapeMatchesNativeMeasurements() throws {
@@ -138,9 +193,9 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(a.minX, 156, accuracy: 1.0)  // 量測 156
 
         let space = try find(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 411.3, accuracy: 1.5)  // 量測 411.3
+        XCTAssertEqual(space.width, 307.3, accuracy: 1.5)  // , . 對齊 n m 後空白鍵縮短
         let ret = try find(f, row: 3) { $0.type == .returnKey }
-        XCTAssertEqual(ret.width, 133.3, accuracy: 1.5)  // 量測 133.3
+        XCTAssertEqual(ret.width, 98.2, accuracy: 1.5)
     }
 
     // MARK: - 每一列都左右切齊（任何螢幕寬度）
@@ -219,7 +274,9 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(email.rows[0], normal.rows[0], "其他列不變")
         XCTAssertTrue(email.rows[3].keys.contains { $0.output == "@" })
         XCTAssertTrue(email.landscapeRows?[3].keys.contains { $0.output == "@" } == true, "橫向也套用")
-        XCTAssertTrue(url.rows[3].keys.contains { $0.output == ".com" })
+        // 網址欄位比照 iOS 26：只多一顆「.」，沒有 / 與 .com
+        XCTAssertEqual(url.rows[3].keys.compactMap(\.output), ["."])
+        XCTAssertFalse(url.rows[3].keys.contains { $0.output == ".com" || $0.output == "/" })
         XCTAssertEqual(layout.page("alpha", variant: "nonexistent"), normal, "沒有這個情境就用預設版面")
         XCTAssertNil(layout.page("missing"))
     }

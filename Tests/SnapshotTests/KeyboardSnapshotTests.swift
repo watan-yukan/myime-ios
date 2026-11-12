@@ -53,10 +53,11 @@ final class KeyboardSnapshotTests: XCTestCase {
         case .char:
             let base = key.output ?? ""
             let isLetter = base.first?.isLetter == true
-            return KeyContent(text: isLetter ? (scene.uppercase ? base.uppercased() : base) : base)
+            return KeyContent(text: isLetter ? (scene.uppercase ? base.uppercased() : base) : base, secondary: key.secondary)
         case .shift: return KeyContent(symbol: scene.uppercase ? "shift.fill" : "shift")
         case .backspace: return KeyContent(symbol: "delete.left")
-        case .space: return KeyContent()
+        case .space:
+            return scene.composing != nil ? KeyContent(symbol: "chevron.up.2", isHint: true) : KeyContent()
         case .returnKey: return KeyContent(symbol: "return")
         case .page: return KeyContent(text: key.label, isFunctionText: true)
         case .tab: return KeyContent(symbol: "arrow.right.to.line")
@@ -80,12 +81,13 @@ final class KeyboardSnapshotTests: XCTestCase {
         }
         let keysHeight = LayoutEngine.frames(
             for: page, metrics: metrics, containerWidth: scene.width, landscape: scene.landscape).size.height
-        let barHeight: CGFloat = 44
+        let barHeight: CGFloat = 56  // 與鍵盤相同（UI 規格 5）
 
         let root = UIView(frame: CGRect(x: 0, y: 0, width: scene.width, height: barHeight + keysHeight))
         root.backgroundColor = palette[.keyboardBackground].uiColor
 
         let bar = CandidateBarView(frame: CGRect(x: 0, y: 0, width: scene.width, height: barHeight))
+        bar.showsDismissTool = false  // 與鍵盤相同：收起鍵盤改用下滑
         bar.applyTheme(palette: palette, metrics: theme.metrics)
         if let code = scene.composing {
             bar.update(

@@ -82,6 +82,8 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     public var fullWidthPunctuation = true
     /// 可選的數字列（FR-U22）。
     public var numberRow = false
+    /// 字母鍵往下滑輸入上方小字（FR-U25）。
+    public var flickSecondary = true
     public var keycapLabel = KeycapLabel.letter
     /// 組字顯示位置（FR-K13）。
     public var composingDisplay = ComposingDisplay.bar
@@ -98,7 +100,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, keySound, haptics, autoCapitalize, doubleSpacePeriod
         case spaceSwipeUpEnglish, spaceSwipeUpAppendSpace, autoCapitalizeEnglishSend
-        case fullWidthPunctuation, numberRow, keycapLabel, composingDisplay, candidateCount
+        case fullWidthPunctuation, numberRow, flickSecondary, keycapLabel, composingDisplay, candidateCount
         case phraseLearning, clipboard, theme, backup
     }
 
@@ -117,6 +119,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
             try c.decodeIfPresent(Bool.self, forKey: .autoCapitalizeEnglishSend) ?? d.autoCapitalizeEnglishSend
         fullWidthPunctuation = try c.decodeIfPresent(Bool.self, forKey: .fullWidthPunctuation) ?? d.fullWidthPunctuation
         numberRow = try c.decodeIfPresent(Bool.self, forKey: .numberRow) ?? d.numberRow
+        flickSecondary = try c.decodeIfPresent(Bool.self, forKey: .flickSecondary) ?? d.flickSecondary
         keycapLabel = try c.decodeIfPresent(KeycapLabel.self, forKey: .keycapLabel) ?? d.keycapLabel
         composingDisplay = try c.decodeIfPresent(ComposingDisplay.self, forKey: .composingDisplay) ?? d.composingDisplay
         candidateCount = try c.decodeIfPresent(Int.self, forKey: .candidateCount) ?? d.candidateCount

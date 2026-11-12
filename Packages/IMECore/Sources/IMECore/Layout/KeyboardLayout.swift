@@ -32,7 +32,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
     public var shiftOutput: String?
     /// 鍵帽文字，省略時用 `output`。
     public var label: String?
-    /// iPad 鍵上方的小字，往下滑輸入（FR-U25）。
+    /// 鍵上方的小字，往下滑輸入（FR-U25，iPad 與 iPhone）。
     public var secondary: String?
     /// 長按替代字元（FR-U06）。
     public var alternates: [String]
@@ -40,6 +40,9 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
     public var width: Double
     /// `page` 型按鍵要切到的頁。
     public var target: String?
+    /// 對齊上方某個鍵（以那個鍵的 `output` 指定）：位置與寬度和它相同，
+    /// 同列其他鍵依各自的寬度比例分配剩下的空間（FR-U26）。
+    public var alignWith: String?
 
     public init(
         type: KeyType = .char,
@@ -49,7 +52,8 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         secondary: String? = nil,
         alternates: [String] = [],
         width: Double = 1,
-        target: String? = nil
+        target: String? = nil,
+        alignWith: String? = nil
     ) {
         self.type = type
         self.output = output
@@ -59,6 +63,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         self.alternates = alternates
         self.width = width
         self.target = target
+        self.alignWith = alignWith
     }
 
     /// 字元鍵簡寫。
@@ -67,7 +72,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, output, shiftOutput, label, secondary, alternates, width, target
+        case type, output, shiftOutput, label, secondary, alternates, width, target, alignWith
     }
 
     public init(from decoder: Decoder) throws {
@@ -85,6 +90,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         alternates = try container.decodeIfPresent([String].self, forKey: .alternates) ?? []
         width = try container.decodeIfPresent(Double.self, forKey: .width) ?? 1
         target = try container.decodeIfPresent(String.self, forKey: .target)
+        alignWith = try container.decodeIfPresent(String.self, forKey: .alignWith)
     }
 
     /// 鍵帽上顯示的文字。

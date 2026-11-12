@@ -9,11 +9,16 @@ struct KeyContent: Equatable {
     var isAction = false
     /// 功能鍵文字（123、中）字級較小。
     var isFunctionText = false
+    /// 鍵帽上緣的淺灰小字（下滑輸入的字元，FR-U25）。
+    var secondary: String? = nil
+    /// 提示用的小圖示（空白鍵上滑提示，FR-U27）：較小、用次要文字色。
+    var isHint = false
 }
 
 /// 單一按鍵外觀：顏色、圓角、邊框、陰影全部來自主題（FR-T01），元件內不寫死任何顏色。
 final class KeyCapView: UIView {
     private let label = UILabel()
+    private let secondaryLabel = UILabel()
     private let imageView = UIImageView()
     private var content = KeyContent()
     private var palette: ThemePalette?
@@ -34,6 +39,10 @@ final class KeyCapView: UIView {
 
         imageView.contentMode = .center  // 圖示保持固定大小置中，不被拉伸填滿按鍵
         addSubview(imageView)
+
+        secondaryLabel.textAlignment = .center
+        secondaryLabel.isHidden = true
+        addSubview(secondaryLabel)
     }
 
     private var symbolName: String?
@@ -50,6 +59,8 @@ final class KeyCapView: UIView {
         symbolSize = 0  // 下次排版時依按鍵大小重新產生圖示
         label.isHidden = newContent.text == nil || labelsHidden
         imageView.isHidden = newContent.symbol == nil || labelsHidden
+        secondaryLabel.text = newContent.secondary
+        secondaryLabel.isHidden = newContent.secondary == nil || labelsHidden
         updateColors()
         setNeedsLayout()
     }
@@ -72,6 +83,7 @@ final class KeyCapView: UIView {
         labelsHidden = hidden
         label.isHidden = content.text == nil || hidden
         imageView.isHidden = content.symbol == nil || hidden
+        secondaryLabel.isHidden = content.secondary == nil || hidden
     }
 
     private func updateColors() {
@@ -87,7 +99,8 @@ final class KeyCapView: UIView {
         }
         backgroundColor = background.uiColor
         label.textColor = foreground.uiColor
-        imageView.tintColor = foreground.uiColor
+        imageView.tintColor = content.isHint ? palette[.keySecondaryText].uiColor : foreground.uiColor
+        secondaryLabel.textColor = palette[.keySecondaryText].uiColor
 
         let border = palette[.keyBorder]
         layer.borderColor = border.uiColor.cgColor
@@ -111,11 +124,20 @@ final class KeyCapView: UIView {
             fontSize = min(26, bounds.height * 0.5)
         }
         label.font = UIFont.systemFont(ofSize: fontSize * CGFloat(themeMetrics.fontScale))
-        label.frame = bounds.insetBy(dx: 2, dy: 2)
+        if content.secondary != nil {
+            // 上緣小字約 10 pt，字母往下移一點避免重疊（UI 規格 4.5）
+            let smallSize = min(11, max(8, bounds.height * 0.23)) * CGFloat(themeMetrics.fontScale)
+            secondaryLabel.font = UIFont.systemFont(ofSize: smallSize)
+            secondaryLabel.frame = CGRect(x: 0, y: 2, width: bounds.width, height: smallSize + 2)
+            label.frame = bounds.insetBy(dx: 2, dy: 2).offsetBy(dx: 0, dy: bounds.height * 0.07)
+        } else {
+            label.frame = bounds.insetBy(dx: 2, dy: 2)
+        }
         imageView.frame = bounds
 
         // 圖示大小隨鍵高：iPhone 直向約 20 pt、橫向 16 pt、iPad 最大 24 pt
-        let size = min(max(bounds.height * 0.44, 16), 24) * CGFloat(themeMetrics.fontScale)
+        let fullSize = min(max(bounds.height * 0.44, 16), 24)
+        let size = (content.isHint ? min(13, fullSize) : fullSize) * CGFloat(themeMetrics.fontScale)
         if size != symbolSize {
             symbolSize = size
             imageView.image = symbolName.flatMap {

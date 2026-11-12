@@ -38,11 +38,12 @@ struct SettingsPage: View {
                 } header: {
                     Text("中英混打")
                 } footer: {
-                    Text("組字時在空白鍵上快速上滑，或點候選列最後一格，就能把打的字母當英文送出，不用切換鍵盤。")
+                    Text("組字時在空白鍵上快速上滑，或點候選列最左邊的字根，就能把打的字母當英文送出，不用切換鍵盤。")
                 }
 
                 Section {
                     Toggle("數字列選字", isOn: $model.settings.numberRow)
+                    Toggle("字母鍵下滑輸入", isOn: $model.settings.flickSecondary)
                     Picker("組字顯示位置", selection: $model.settings.composingDisplay) {
                         Text("鍵盤上方").tag(ComposingDisplay.bar)
                         Text("輸入框內").tag(ComposingDisplay.inline)

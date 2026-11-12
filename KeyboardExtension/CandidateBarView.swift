@@ -43,8 +43,8 @@ final class CandidateBarView: UIView {
     private var suggestions: [PhraseSuggestion] = []
     private var toolButtons: [(tool: Tool, button: UIButton)] = []
 
-    private let candidateFont = UIFont.systemFont(ofSize: 20)
-    private let codeFont = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+    private let candidateFont = UIFont.systemFont(ofSize: 24)  // UI 規格 5：候選字 24 pt
+    private let codeFont = UIFont.monospacedSystemFont(ofSize: 21, weight: .regular)  // 字根 21 pt
     private let sideInset: CGFloat = 8
 
     override init(frame: CGRect) {
@@ -146,9 +146,14 @@ final class CandidateBarView: UIView {
         if !composing {
             for (index, suggestion) in suggestions.enumerated() {
                 let button = UIButton(type: .system)
-                button.titleLabel?.font = candidateFont
-                button.setTitle(suggestion.text, for: .normal)
-                button.setTitleColor(text, for: .normal)
+                // 顯示整個詞（例如「廁所」），已經打過的開頭較淡；點選只補上後面的字（FR-S01）
+                let typed = String(suggestion.phrase.dropLast(suggestion.text.count))
+                let title = NSMutableAttributedString(
+                    string: typed,
+                    attributes: [.font: candidateFont, .foregroundColor: text.withAlphaComponent(0.45)])
+                title.append(NSAttributedString(
+                    string: suggestion.text, attributes: [.font: candidateFont, .foregroundColor: text]))
+                button.setAttributedTitle(title, for: .normal)
                 button.accessibilityLabel = "建議：\(suggestion.phrase)"
                 button.addAction(UIAction { [weak self] _ in self?.onSelectSuggestion?(index) }, for: .touchUpInside)
                 button.isHidden = true
@@ -203,7 +208,7 @@ final class CandidateBarView: UIView {
         }
 
         let codeWidth = textWidth(state.code, font: codeFont) + 20
-        codeLabel.frame = CGRect(x: sideInset, y: (height - 28) / 2, width: codeWidth, height: 28)
+        codeLabel.frame = CGRect(x: sideInset, y: (height - 38) / 2, width: codeWidth, height: 38)
 
         let left = codeLabel.frame.maxX + 6
         messageLabel.frame = CGRect(x: left, y: 0, width: max(0, rightEdge - left), height: height)
@@ -211,7 +216,7 @@ final class CandidateBarView: UIView {
         let candidates = state.candidates
         var available = rightEdge - left - 4
         var fit = CandidateLayout.fittingCount(
-            candidates, availableWidth: available, itemPadding: 16, minItemWidth: 36,
+            candidates, availableWidth: available, itemPadding: 16, minItemWidth: 40,
             textWidth: { textWidth($0, font: candidateFont) })
         let needsExpand = !candidates.isEmpty && fit < candidates.count
         expandButton.isHidden = !needsExpand
@@ -219,7 +224,7 @@ final class CandidateBarView: UIView {
             expandButton.frame = CGRect(x: rightEdge - 36, y: 0, width: 36, height: height)
             available -= 36
             fit = CandidateLayout.fittingCount(
-                candidates, availableWidth: available, itemPadding: 16, minItemWidth: 36,
+                candidates, availableWidth: available, itemPadding: 16, minItemWidth: 40,
                 textWidth: { textWidth($0, font: candidateFont) })
         }
         if candidateLimit > 0 { fit = min(fit, candidateLimit) }
@@ -228,7 +233,7 @@ final class CandidateBarView: UIView {
         var x = left
         for (index, button) in candidateButtons.enumerated() {
             if index < visibleCandidateCount {
-                let candidateWidth = max(36, textWidth(candidates[index], font: candidateFont) + 16)
+                let candidateWidth = max(40, textWidth(candidates[index], font: candidateFont) + 16)
                 button.frame = CGRect(x: x, y: 0, width: candidateWidth, height: height)
                 button.isHidden = false
                 x += candidateWidth
@@ -261,8 +266,8 @@ final class CandidateBarView: UIView {
         }
 
         var left = sideInset
-        for button in suggestionButtons {
-            let title = button.title(for: .normal) ?? ""
+        for (index, button) in suggestionButtons.enumerated() {
+            let title = suggestions.indices.contains(index) ? suggestions[index].phrase : ""
             let buttonWidth = max(44, textWidth(title, font: candidateFont) + 24)
             guard left + buttonWidth <= x else {
                 button.isHidden = true
@@ -346,7 +351,7 @@ final class CandidatePanelView: UIView {
         let text = palette[.candidateText].uiColor
         for item in pager.currentPage {
             let button = UIButton(type: .system)
-            button.titleLabel?.font = UIFont.systemFont(ofSize: 20)
+            button.titleLabel?.font = UIFont.systemFont(ofSize: 24)
             button.setTitle(item.text, for: .normal)
             button.setTitleColor(text, for: .normal)
             let globalIndex = item.index + startIndex

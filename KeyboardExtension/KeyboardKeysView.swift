@@ -19,6 +19,8 @@ final class KeyboardKeysView: UIView {
     /// 觸控板模式：游標往右（正）或往左（負）移動幾個字元。
     var onTrackpadMove: ((Int) -> Void)?
     var onAlternateSelected: ((String) -> Void)?
+    /// 下滑輸入跨過門檻（觸覺回饋用，FR-U25）。
+    var onSecondaryArmed: (() -> Void)?
     var contentProvider: (LayoutKey) -> KeyContent = { _ in KeyContent() }
     var alternatesProvider: (LayoutKey) -> [String] = { _ in [] }
     /// 排版完成後通知（控制器用來把地球鍵按鈕對齊到版面中的地球鍵）。
@@ -32,6 +34,8 @@ final class KeyboardKeysView: UIView {
     /// 放大預覽可往上超出按鍵區的高度（候選列的高度）。
     var previewHeadroom: CGFloat = 44
     var showsPreview = true
+    /// 字母鍵往下滑輸入上方小字（FR-U25）。
+    var flickEnabled = true
 
     // MARK: - 版面狀態
 
@@ -241,6 +245,10 @@ final class KeyboardKeysView: UIView {
         var trackpadAnchor: CGFloat = 0
         var isTrackpad = false
         var alternates: AlternatesPopupView?
+        /// 往下為主的移動：鎖定在這個鍵，不換到下面那一列的鍵。
+        var flickLock = false
+        /// 已跨過下滑門檻，放開時輸入上方小字。
+        var flicked = false
 
         init(frame: KeyFrame, start: CGPoint) {
             self.frame = frame
@@ -249,7 +257,7 @@ final class KeyboardKeysView: UIView {
         }
 
         var locksKey: Bool {
-            frame.key.type == .space || frame.key.type == .backspace || alternates != nil
+            frame.key.type == .space || frame.key.type == .backspace || alternates != nil || flickLock
         }
 
         func cancelTimers() {
@@ -305,7 +313,11 @@ final class KeyboardKeysView: UIView {
             return
         }
         if committed, !gesture.consumed {
-            onTap?(frame.key, byRollover)
+            if gesture.flicked, let secondary = frame.key.secondary {
+                onTap?(LayoutKey(char: secondary), byRollover)
+            } else {
+                onTap?(frame.key, byRollover)
+            }
         }
     }
 
@@ -336,10 +348,32 @@ final class KeyboardKeysView: UIView {
                 }
             }
         case .char:
-            gesture.alternates?.updateSelection(atX: point.x)
+            if let popup = gesture.alternates {
+                popup.updateSelection(atX: point.x)
+            } else {
+                handleFlick(gesture, to: point)
+            }
         default:
             break
         }
+    }
+
+    /// 往下滑輸入上方小字（FR-U25）：往下為主時鎖定在原鍵；超過半個鍵高才算數，滑回去可取消。
+    private func handleFlick(_ gesture: Gesture, to point: CGPoint) {
+        guard flickEnabled, let secondary = gesture.frame.key.secondary else { return }
+        let dx = point.x - gesture.start.x
+        let dy = point.y - gesture.start.y
+        if !gesture.flickLock {
+            // 橫向滑動維持原本「滑到別的鍵」的行為
+            guard dy > 6, dy >= abs(dx) else { return }
+            gesture.flickLock = true
+            gesture.work?.cancel()  // 不再等長按的替代字元選單
+        }
+        let armed = dy >= max(18, gesture.frame.rect.height * 0.5)
+        guard armed != gesture.flicked else { return }
+        gesture.flicked = armed
+        showPreview(for: gesture.frame, text: armed ? secondary : nil)
+        if armed { onSecondaryArmed?() }
     }
 
     private func startBackspaceRepeat(_ gesture: Gesture) {
@@ -370,9 +404,9 @@ final class KeyboardKeysView: UIView {
 
     // MARK: - 放大預覽與替代字元
 
-    private func showPreview(for frame: KeyFrame) {
+    private func showPreview(for frame: KeyFrame, text override: String? = nil) {
         guard showsPreview, frame.key.type == .char,
-              let text = contentProvider(frame.key).text, !text.isEmpty else {
+              let text = override ?? contentProvider(frame.key).text, !text.isEmpty else {
             previewView.isHidden = true
             return
         }

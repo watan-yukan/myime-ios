@@ -82,6 +82,14 @@ public enum LayoutEngine {
         var frames: [KeyFrame] = []
         for (rowIndex, row) in rows.enumerated() {
             let y = topInset + CGFloat(rowIndex) * (keyHeight + rowGap)
+            // 有 `alignWith` 的列：對齊鍵照抄上方鍵的位置，其餘鍵分段填滿（FR-U26）
+            if let aligned = alignedRow(
+                row, rowIndex: rowIndex, y: y, keyHeight: keyHeight,
+                left: originX, right: originX + inner, gap: gap, placed: frames
+            ) {
+                frames.append(contentsOf: aligned)
+                continue
+            }
             // 每一列各自解出鍵寬，任何螢幕寬度下每列都左右切齊（各列字母鍵寬相差 < 0.1 pt）
             let rowUnit = solveUnit(row, inner: inner, gap: gap)
             var x = originX + CGFloat(row.inset) * (rowUnit + gap)
@@ -110,6 +118,63 @@ public enum LayoutEngine {
         let rowCount = CGFloat(rows.count)
         let height = topInset + rowCount * keyHeight + max(rowCount - 1, 0) * rowGap + CGFloat(metrics.bottomInset)
         return PageFrames(frames: frames, size: CGSize(width: containerWidth, height: height), unit: unit)
+    }
+
+    /// 排有對齊鍵的列：對齊鍵的 x 與寬度照抄上方同 `output` 的鍵；對齊鍵把這一列切成幾段，
+    /// 每段裡的鍵依 `width` 比例填滿該段（段與段、鍵與鍵之間仍留 `keyGap`）。
+    /// 找不到要對齊的鍵時回傳 nil，改用一般排法。
+    static func alignedRow(
+        _ row: LayoutRow, rowIndex: Int, y: CGFloat, keyHeight: CGFloat,
+        left: CGFloat, right: CGFloat, gap: CGFloat, placed: [KeyFrame]
+    ) -> [KeyFrame]? {
+        var anchors: [(index: Int, rect: CGRect)] = []
+        for (index, key) in row.keys.enumerated() {
+            guard let target = key.alignWith else { continue }
+            guard let match = placed.first(where: { $0.key.output == target }) else { return nil }
+            anchors.append((index, match.rect))
+        }
+        guard !anchors.isEmpty else { return nil }
+
+        var result: [KeyFrame] = []
+        func fill(_ range: Range<Int>, from start: CGFloat, to end: CGFloat) {
+            let items = range.map { (index: $0, key: row.keys[$0]) }
+            let realCount = items.filter { $0.key.isTouchable }.count
+            guard realCount > 0 else { return }
+            let units = items.reduce(0.0) { $0 + $1.key.width }
+            guard units > 0 else { return }
+            let unit = max(0, (end - start - CGFloat(realCount - 1) * gap) / CGFloat(units))
+            var x = start
+            var pendingSpacer: CGFloat = 0
+            var placedAny = false
+            for (index, key) in items {
+                if key.type == .spacer {
+                    pendingSpacer += CGFloat(key.width) * unit
+                    continue
+                }
+                if placedAny { x += gap }
+                x += pendingSpacer
+                pendingSpacer = 0
+                let width = CGFloat(key.width) * unit
+                result.append(KeyFrame(
+                    id: KeyID(row: rowIndex, index: index), key: row.keys[index],
+                    rect: CGRect(x: x, y: y, width: width, height: keyHeight)))
+                x += width
+                placedAny = true
+            }
+        }
+
+        var segmentStart = 0
+        var segmentLeft = left
+        for anchor in anchors {
+            fill(segmentStart..<anchor.index, from: segmentLeft, to: anchor.rect.minX - gap)
+            result.append(KeyFrame(
+                id: KeyID(row: rowIndex, index: anchor.index), key: row.keys[anchor.index],
+                rect: CGRect(x: anchor.rect.minX, y: y, width: anchor.rect.width, height: keyHeight)))
+            segmentStart = anchor.index + 1
+            segmentLeft = anchor.rect.maxX + gap
+        }
+        fill(segmentStart..<row.keys.count, from: segmentLeft, to: right)
+        return result
     }
 
     /// 由參考列解出 1 個字母鍵寬。

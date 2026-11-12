@@ -8,37 +8,49 @@
   "pages": {
     "alpha": {
       "rows": [
-        { "keys": ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"] },
-        { "inset": 0.5, "keys": ["a", "s", "d", "f", "g", "h", "j", "k", "l"] },
+        { "keys": [
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+        ] },
+        { "inset": 0.5, "keys": [
+          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+        ] },
         { "keys": [
           { "type": "shift", "width": 1.34 },
           { "type": "spacer", "width": 0.24 },
-          "z", "x", "c", "v", "b", "n", "m",
+          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
           { "type": "spacer", "width": 0.24 },
           { "type": "backspace", "width": 1.35 }
         ] },
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
           { "type": "emoji", "width": 1.29 },
-          { "type": "space", "width": 5.66 },
-          { "type": "return", "width": 2.76 }
+          { "type": "space", "width": 4.4 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!", "alignWith": "n" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?", "alignWith": "m" },
+          { "type": "return", "width": 2.2 }
         ] }
       ],
       "landscapeRows": [
-        { "keys": ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p"] },
-        { "inset": 0.5, "keys": ["a", "s", "d", "f", "g", "h", "j", "k", "l"] },
+        { "keys": [
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+        ] },
+        { "inset": 0.5, "keys": [
+          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+        ] },
         { "keys": [
           { "type": "shift", "width": 1.325 },
           { "type": "spacer", "width": 0.22 },
-          "z", "x", "c", "v", "b", "n", "m",
+          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
           { "type": "spacer", "width": 0.22 },
           { "type": "backspace", "width": 1.325 }
         ] },
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.0 },
           { "type": "emoji", "width": 1.0 },
-          { "type": "space", "width": 6.47 },
-          { "type": "return", "width": 2.1 }
+          { "type": "space", "width": 4.83 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!", "alignWith": "n" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?", "alignWith": "m" },
+          { "type": "return", "width": 2.0 }
         ] }
       ]
     },
@@ -149,10 +161,9 @@
         "3": { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
           { "type": "emoji", "width": 1.29 },
-          { "output": "/", "width": 1.0 },
-          { "output": ".com", "label": ".com", "width": 1.6 },
-          { "type": "space", "width": 2.9 },
-          { "type": "return", "width": 2.58 }
+          { "type": "space", "width": 5.4 },
+          { "output": ".", "width": 1.0 },
+          { "type": "return", "width": 1.86 }
         ] }
       }
     }

@@ -205,6 +205,7 @@ final class KeyboardViewController: UIInputViewController {
         guard let url = SharedStorage.url(SharedStorage.FileName.settings) else { return }
         settings = SettingsStore(url: url).load().settings
         session?.settings = settings
+        keysView.flickEnabled = settings.flickSecondary
     }
 
     /// 載入碼表與引擎；碼表沒有變動時沿用現有引擎，不會讓使用者的中 / 英模式被重置。
@@ -280,6 +281,12 @@ final class KeyboardViewController: UIInputViewController {
         keysView.onBackspaceRepeat = { [weak self] count in self?.session?.repeatBackspace(count: count) }
         keysView.onTrackpadMove = { [weak self] steps in self?.moveCursor(by: steps) }
         keysView.onAlternateSelected = { [weak self] text in self?.insertAlternate(text) }
+        keysView.onSecondaryArmed = { [weak self] in
+            // 下滑跨過門檻：震一下（只震動、不再發按鍵音）
+            guard let self, self.settings.haptics, self.hasFullAccess else { return }
+            self.haptic.impactOccurred()
+            self.haptic.prepare()
+        }
         keysView.contentProvider = { [weak self] key in self?.content(for: key) ?? KeyContent() }
         keysView.alternatesProvider = { [weak self] key in self?.alternates(for: key) ?? [] }
         keysView.previewHeadroom = candidateBarHeight
@@ -459,7 +466,9 @@ final class KeyboardViewController: UIInputViewController {
             let base = key.output ?? ""
             let isLetter = base.first?.isLetter == true
             let text = isLetter ? (session.showsUppercase ? base.uppercased() : base.lowercased()) : base
-            return KeyContent(text: key.label ?? text)
+            // 下滑輸入的小字（FR-U25）；設定關閉時不顯示
+            let secondary = settings.flickSecondary ? key.secondary : nil
+            return KeyContent(text: key.label ?? text, secondary: secondary)
         case .shift:
             switch session.shift.mode {
             case .off: return KeyContent(symbol: "shift")
@@ -467,7 +476,12 @@ final class KeyboardViewController: UIInputViewController {
             case .locked: return KeyContent(symbol: "capslock.fill")
             }
         case .backspace: return KeyContent(symbol: "delete.left")
-        case .space: return KeyContent()
+        case .space:
+            // 組字中顯示雙折線，提示可上滑送出英文（FR-U27）
+            if session.composerState.isComposing, settings.spaceSwipeUpEnglish {
+                return KeyContent(symbol: "chevron.up.2", isHint: true)
+            }
+            return KeyContent()
         case .returnKey: return returnKeyContent()
         case .page: return KeyContent(text: key.label, isFunctionText: true)
         case .langToggle: return KeyContent(text: session.mode == .chinese ? "中" : "英", isFunctionText: true)
@@ -479,18 +493,16 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// 依輸入框的 `returnKeyType` 改變 Return 鍵（FR-U10）。
+    /// 依輸入框的 `returnKeyType` 改變 Return 鍵（FR-U10）。iOS 26 原生只顯示圖示、不顯示文字
+    /// （UI 規格 2.2；完成、傳送與少見類型的圖示為推測，待實機對照）。
     private func returnKeyContent() -> KeyContent {
         switch textDocumentProxy.returnKeyType ?? .default {
-        case .go: return KeyContent(text: "前往", isAction: true, isFunctionText: true)
+        case .go, .join, .route, .continue, .emergencyCall:
+            return KeyContent(symbol: "arrow.right", isAction: true)
         case .search, .google, .yahoo: return KeyContent(symbol: "magnifyingglass", isAction: true)
-        case .send: return KeyContent(text: "傳送", isAction: true, isFunctionText: true)
-        case .done: return KeyContent(text: "完成", isAction: true, isFunctionText: true)
-        case .next: return KeyContent(text: "下一項", isAction: true, isFunctionText: true)
-        case .join: return KeyContent(text: "加入", isAction: true, isFunctionText: true)
-        case .route: return KeyContent(text: "路線", isAction: true, isFunctionText: true)
-        case .continue: return KeyContent(text: "繼續", isAction: true, isFunctionText: true)
-        case .emergencyCall: return KeyContent(text: "緊急", isAction: true, isFunctionText: true)
+        case .send: return KeyContent(symbol: "arrow.up", isAction: true)
+        case .done: return KeyContent(symbol: "checkmark", isAction: true)
+        case .next: return KeyContent(symbol: "chevron.right")
         default: return KeyContent(symbol: "return")
         }
     }
