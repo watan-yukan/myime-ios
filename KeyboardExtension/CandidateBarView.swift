@@ -16,6 +16,10 @@ final class CandidateBarView: UIView {
     var onExpand: (() -> Void)?
     var onTool: ((Tool) -> Void)?
     var onSelectSuggestion: ((Int) -> Void)?
+    /// iPad 的按鍵區右下角已有收合鍵，候選列就不再放一顆。
+    var showsDismissTool = true {
+        didSet { setNeedsLayout() }
+    }
 
     /// 目前這一列顯示的候選數（展開候選表從這裡之後接續）。
     private(set) var visibleCandidateCount = 0
@@ -128,7 +132,7 @@ final class CandidateBarView: UIView {
         messageLabel.isHidden = messageLabel.text == nil
 
         for (_, button) in toolButtons {
-            button.isHidden = composing
+            button.isHidden = composing || !showsDismissTool
             button.tintColor = text.withAlphaComponent(0.75)
         }
         expandButton.tintColor = text
@@ -235,6 +239,10 @@ final class CandidateBarView: UIView {
         // 有常用詞建議時，右邊只留「收起鍵盤」，空間讓給建議
         let hasSuggestions = !suggestionButtons.isEmpty
         for (tool, button) in toolButtons.reversed() {
+            if tool == .dismiss, !showsDismissTool {
+                button.isHidden = true
+                continue
+            }
             if hasSuggestions, tool != .dismiss {
                 button.isHidden = true
                 continue

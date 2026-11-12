@@ -112,9 +112,36 @@ final class KeyboardViewController: UIInputViewController {
                 name(c.firstItem), name(c.secondItem), c.constant, c.priority.rawValue,
                 c.identifier ?? "-", c.isActive ? "Y" : "N"))
         }
+        if let sizerHeight {
+            lines.append(String(
+                format: "sizer c=%.0f p=%.0f act=%@ frame=%.0f",
+                sizerHeight.constant, sizerHeight.priority.rawValue,
+                sizerHeight.isActive ? "Y" : "N", sizerView.frame.height))
+        }
         return lines.joined(separator: "\n")
     }
-    private var heightConstraint: NSLayoutConstraint?
+
+    /// 隱形 view 上下貼齊 root、高度為期望值；系統以內容計算自訂鍵盤高度時會採用。
+    private func setupSizer(in root: UIView) {
+        sizerView.isUserInteractionEnabled = false
+        sizerView.translatesAutoresizingMaskIntoConstraints = false
+        root.insertSubview(sizerView, at: 0)
+        let height = sizerView.heightAnchor.constraint(equalToConstant: 281)
+        height.priority = UILayoutPriority(999)  // 不和系統的必要約束硬碰，避免被剔除
+        height.identifier = "myime.sizer.height"
+        NSLayoutConstraint.activate([
+            sizerView.topAnchor.constraint(equalTo: root.topAnchor),
+            sizerView.bottomAnchor.constraint(equalTo: root.bottomAnchor),
+            sizerView.leadingAnchor.constraint(equalTo: root.leadingAnchor),
+            sizerView.widthAnchor.constraint(equalToConstant: 1),
+            height,
+        ])
+        sizerHeight = height
+    }
+    /// 撐開鍵盤高度用的隱形 view：上下貼齊 root，高度 = 期望高度。
+    /// `allowsSelfSizing` 的鍵盤由「內容」決定高度，直接約束 root 的高度會被系統剔除。
+    private let sizerView = UIView()
+    private var sizerHeight: NSLayoutConstraint?
     private var configuredKey = ""
     private var pageForcedByKeyboardType = false
     private let candidateBarHeight: CGFloat = 56  // 比原生高 12pt，讓第一排的放大預覽有完整空間
@@ -138,10 +165,12 @@ final class KeyboardViewController: UIInputViewController {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad
         layoutFile = LayoutCatalog.layout(isPad: isPad)
         keysView.showsPreview = !isPad  // iPad 沒有按下放大預覽（比照原生）
+        candidateBar.showsDismissTool = !isPad  // iPad 右下角已有收合鍵（比照原生）
 
         let root: UIView = rootView
         root.addSubview(candidateBar)
         root.addSubview(keysView)
+        setupSizer(in: root)
         setupGlobeButton()
         root.addSubview(candidatePanel)
         root.addSubview(emojiPanel)
@@ -170,6 +199,16 @@ final class KeyboardViewController: UIInputViewController {
         session?.contextChanged()
         applyKeyboardTypeDefaults()
         refreshEverything()
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        // Apple 文件：自訂鍵盤的高度要在畫面出現之後調整，系統才會套用。重新啟用一次高度約束。
+        if let sizerHeight {
+            sizerHeight.isActive = false
+            sizerHeight.isActive = true
+        }
+        rootView.setNeedsLayout()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -556,15 +595,8 @@ final class KeyboardViewController: UIInputViewController {
         let requested = candidateBarHeight + keysHeightRequested
 
         (root as? KeyboardRootView)?.desiredHeight = requested
-        if heightConstraint == nil {
-            let constraint = root.heightAnchor.constraint(equalToConstant: requested)
-            // 實驗：999 時系統固定給 224pt；改成必要（1000）看系統是否接受
-            constraint.priority = .required
-            constraint.identifier = "myime.height"
-            constraint.isActive = true
-            heightConstraint = constraint
-        } else if heightConstraint?.constant != requested {
-            heightConstraint?.constant = requested
+        if let sizerHeight, abs(sizerHeight.constant - requested) > 0.5 {
+            sizerHeight.constant = requested
         }
 
         if Self.showHeightDebug {
