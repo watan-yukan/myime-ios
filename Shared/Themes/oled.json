@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "oled",
+  "name": "純黑 OLED",
+  "builtin": true,
+  "light": {
+    "keyboardBackground": "#000000",
+    "keyBackground": "#1C1C1E",
+    "keyBackgroundPressed": "#3A3A3C",
+    "keyText": "#FFFFFF",
+    "keyTextPressed": "#FFFFFF",
+    "keySecondaryText": "#8E8E93",
+    "keyBorder": "#00000000",
+    "keyShadow": "#00000000",
+    "actionKeyBackground": "#0A84FF",
+    "actionKeyText": "#FFFFFF",
+    "disabledKeyBackground": "#2C2C2E",
+    "candidateBarBackground": "#000000",
+    "candidateText": "#FFFFFF",
+    "candidateHighlight": "#0A84FF",
+    "candidateSeparator": "#FFFFFF26",
+    "composingBackground": "#3A3A3C",
+    "composingText": "#FFFFFF",
+    "popupBackground": "#2C2C2E",
+    "popupText": "#FFFFFF"
+  }
+}

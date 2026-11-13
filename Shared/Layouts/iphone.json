@@ -1,0 +1,171 @@
+{
+  "schemaVersion": 1,
+  "device": "iphone",
+  "metrics": {
+    "portrait": { "sideMargin": 6.5, "keyGap": 6, "rowGap": 11, "keyHeight": 45, "topInset": 8, "bottomInset": 4 },
+    "landscape": { "sideMargin": 0, "keyGap": 6, "rowGap": 8.5, "keyHeight": 32, "contentWidth": 690, "topInset": 6, "bottomInset": 4 }
+  },
+  "pages": {
+    "alpha": {
+      "rows": [
+        { "keys": [
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+        ] },
+        { "inset": 0.5, "keys": [
+          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+        ] },
+        { "keys": [
+          { "type": "shift", "width": 1.34 },
+          { "type": "spacer", "width": 0.24 },
+          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
+          { "type": "spacer", "width": 0.24 },
+          { "type": "backspace", "width": 1.35 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
+          { "type": "emoji", "width": 1.29 },
+          { "type": "space", "width": 5.09 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "type": "return", "width": 1.0 }
+        ] }
+      ],
+      "landscapeRows": [
+        { "keys": [
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+        ] },
+        { "inset": 0.5, "keys": [
+          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+        ] },
+        { "keys": [
+          { "type": "shift", "width": 1.325 },
+          { "type": "spacer", "width": 0.22 },
+          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
+          { "type": "spacer", "width": 0.22 },
+          { "type": "backspace", "width": 1.325 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.0 },
+          { "type": "emoji", "width": 1.0 },
+          { "type": "space", "width": 5.37 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "type": "return", "width": 1.0 }
+        ] }
+      ]
+    },
+    "numbers": {
+      "rows": [
+        { "keys": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] },
+        { "keys": ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""] },
+        { "keys": [
+          { "type": "page", "target": "symbols", "label": "#+=", "width": 1.35 },
+          { "type": "spacer", "width": 0.24 },
+          { "output": ".", "width": 1.46 },
+          { "output": ",", "width": 1.46 },
+          { "output": "?", "width": 1.46 },
+          { "output": "!", "width": 1.46 },
+          { "output": "'", "width": 1.46 },
+          { "type": "spacer", "width": 0.24 },
+          { "type": "backspace", "width": 1.36 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "alpha", "label": "ABC", "width": 1.29 },
+          { "type": "emoji", "width": 1.29 },
+          { "type": "space", "width": 5.66 },
+          { "type": "return", "width": 2.76 }
+        ] }
+      ],
+      "landscapeRows": [
+        { "keys": ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"] },
+        { "keys": ["-", "/", ":", ";", "(", ")", "$", "&", "@", "\""] },
+        { "keys": [
+          { "type": "page", "target": "symbols", "label": "#+=", "width": 1.325 },
+          { "type": "spacer", "width": 0.22 },
+          { "output": ".", "width": 1.44 },
+          { "output": ",", "width": 1.44 },
+          { "output": "?", "width": 1.44 },
+          { "output": "!", "width": 1.44 },
+          { "output": "'", "width": 1.44 },
+          { "type": "spacer", "width": 0.22 },
+          { "type": "backspace", "width": 1.325 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "alpha", "label": "ABC", "width": 1.0 },
+          { "type": "emoji", "width": 1.0 },
+          { "type": "space", "width": 6.47 },
+          { "type": "return", "width": 2.1 }
+        ] }
+      ]
+    },
+    "symbols": {
+      "rows": [
+        { "keys": ["[", "]", "{", "}", "#", "%", "^", "*", "+", "="] },
+        { "keys": ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"] },
+        { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.35 },
+          { "type": "spacer", "width": 0.24 },
+          { "output": ".", "width": 1.46 },
+          { "output": ",", "width": 1.46 },
+          { "output": "?", "width": 1.46 },
+          { "output": "!", "width": 1.46 },
+          { "output": "'", "width": 1.46 },
+          { "type": "spacer", "width": 0.24 },
+          { "type": "backspace", "width": 1.36 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "alpha", "label": "ABC", "width": 1.29 },
+          { "type": "emoji", "width": 1.29 },
+          { "type": "space", "width": 5.66 },
+          { "type": "return", "width": 2.76 }
+        ] }
+      ],
+      "landscapeRows": [
+        { "keys": ["[", "]", "{", "}", "#", "%", "^", "*", "+", "="] },
+        { "keys": ["_", "\\", "|", "~", "<", ">", "€", "£", "¥", "•"] },
+        { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.325 },
+          { "type": "spacer", "width": 0.22 },
+          { "output": ".", "width": 1.44 },
+          { "output": ",", "width": 1.44 },
+          { "output": "?", "width": 1.44 },
+          { "output": "!", "width": 1.44 },
+          { "output": "'", "width": 1.44 },
+          { "type": "spacer", "width": 0.22 },
+          { "type": "backspace", "width": 1.325 }
+        ] },
+        { "keys": [
+          { "type": "page", "target": "alpha", "label": "ABC", "width": 1.0 },
+          { "type": "emoji", "width": 1.0 },
+          { "type": "space", "width": 6.47 },
+          { "type": "return", "width": 2.1 }
+        ] }
+      ]
+    }
+  },
+  "variants": {
+    "email": {
+      "alpha": {
+        "3": { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
+          { "type": "emoji", "width": 1.29 },
+          { "output": "@", "width": 1.0 },
+          { "type": "space", "width": 3.9 },
+          { "output": ".", "width": 1.0 },
+          { "type": "return", "width": 2.18 }
+        ] }
+      }
+    },
+    "url": {
+      "alpha": {
+        "3": { "keys": [
+          { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
+          { "type": "emoji", "width": 1.29 },
+          { "type": "space", "width": 5.4 },
+          { "output": ".", "width": 1.0 },
+          { "type": "return", "width": 1.86 }
+        ] }
+      }
+    }
+  }
+}

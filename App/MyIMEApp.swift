@@ -4,7 +4,7 @@ import SwiftUI
 struct MyIMEApp: App {
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
     }
 }

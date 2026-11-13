@@ -21,6 +21,12 @@ public struct ComposerState: Equatable, Sendable {
     public var candidates: [String]
     public var status: Status
 
+    public init(code: String, candidates: [String], status: Status) {
+        self.code = code
+        self.candidates = candidates
+        self.status = status
+    }
+
     public var isComposing: Bool { !code.isEmpty }
 
     /// 候選列最後固定的英文選項（FR-E01）：目前已輸入的原始字母；沒在組字時為 nil。
@@ -30,7 +36,7 @@ public struct ComposerState: Equatable, Sendable {
 }
 
 /// 組字內容顯示位置（FR-K13）。
-public enum ComposingDisplay: Equatable, Sendable {
+public enum ComposingDisplay: String, Codable, Equatable, Sendable {
     /// 顯示在鍵盤上方組字區（預設）；不對輸入框送 marked text。
     case bar
     /// 顯示在輸入框游標處（`setMarkedText`）。

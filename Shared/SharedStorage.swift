@@ -12,17 +12,6 @@ struct KeyboardHeartbeat: Codable {
     var lastSeen: Date
 }
 
-/// 主 App 寫入、鍵盤讀取，用來驗證 App Group 共用（Spike 0.9）。
-struct SpikePing: Codable {
-    var writtenAt: Date
-}
-
-/// 首次啟動時建立，重簽後檢查是否仍在，用來驗證資料保留（Spike 0.16）。
-struct PersistMarker: Codable {
-    var id: UUID
-    var createdAt: Date
-}
-
 enum StorageError: LocalizedError {
     case containerUnavailable
 
@@ -38,9 +27,14 @@ enum StorageError: LocalizedError {
 enum SharedStorage {
     enum FileName {
         static let heartbeat = "keyboard_heartbeat.json"
-        static let ping = "spike_ping.json"
-        static let marker = "persist_marker.json"
-        static let importedTable = "imported_table.cin"
+        static let settings = "settings.json"
+        /// 碼表索引（鍵盤只讀，docs/06_資料格式.md 第 2 章）。
+        static let tableIndex = "table.idx"
+        /// 匯入碼表的名稱、筆數、匯入時間。
+        static let tableMeta = "table_meta.json"
+        /// 匯入的原始 .cin 副本：索引格式升版時用來重建；不進備份、不上傳（R-LIU-1）。
+        static let tableSource = "table_source.cin"
+        static let phrases = "phrases.json"
     }
 
     static var containerURL: URL? {
