@@ -22,6 +22,8 @@ final class KeyboardKeysView: UIView {
     /// 下滑輸入跨過門檻（觸覺回饋用，FR-U25）。
     var onSecondaryArmed: (() -> Void)?
     var contentProvider: (LayoutKey) -> KeyContent = { _ in KeyContent() }
+    /// 按住這個鍵時，放大預覽右側要顯示的第一候選字（打下去之後的結果，FR-U28）；nil 表示不顯示。
+    var previewCandidateProvider: (LayoutKey) -> String? = { _ in nil }
     var alternatesProvider: (LayoutKey) -> [String] = { _ in [] }
     /// 排版完成後通知（控制器用來把地球鍵按鈕對齊到版面中的地球鍵）。
     var onLayout: (() -> Void)?
@@ -57,12 +59,14 @@ final class KeyboardKeysView: UIView {
 
     private let previewView = UIView()
     private let previewLabel = UILabel()
+    private let previewCandidateLabel = UILabel()
 
     private let longPressDelay: TimeInterval = 0.45
     private let backspaceDelay: TimeInterval = 0.4
     private let backspaceInterval: TimeInterval = 0.08
     private let swipeUpDistance: CGFloat = 28
-    private let trackpadStep: CGFloat = 9
+    /// 觸控板模式每移動多少 pt 游標走一個字（再依手指速度加速）。
+    private let trackpadStep: CGFloat = 6
 
     // MARK: - 初始化
 
@@ -79,6 +83,11 @@ final class KeyboardKeysView: UIView {
         previewLabel.textAlignment = .center
         previewLabel.font = UIFont.systemFont(ofSize: 40)
         previewView.addSubview(previewLabel)
+        previewCandidateLabel.textAlignment = .center
+        previewCandidateLabel.font = UIFont.systemFont(ofSize: 30)
+        previewCandidateLabel.isHidden = true
+        previewView.addSubview(previewCandidateLabel)
+        previewView.clipsToBounds = false
         addSubview(previewView)
     }
 
@@ -104,6 +113,8 @@ final class KeyboardKeysView: UIView {
         previewView.layer.shadowColor = UIColor.black.cgColor
         previewView.layer.shadowOpacity = 0.25
         previewLabel.textColor = palette[.popupText].uiColor
+        previewCandidateLabel.backgroundColor = palette[.actionKeyBackground].uiColor
+        previewCandidateLabel.textColor = palette[.actionKeyText].uiColor
     }
 
     /// 狀態改變（Shift、中英模式、頁面）後更新鍵帽文字。
@@ -159,7 +170,10 @@ final class KeyboardKeysView: UIView {
         gestures.removeAll()
         touchIDs.removeAll()
         locations.removeAll()
-        for cap in caps.values { cap.setPressed(false) }
+        for cap in caps.values {
+            cap.setPressed(false)
+            cap.setFlickProgress(0)
+        }
         previewView.isHidden = true
         tracker = TouchTracker(hitTester: pageFrames.hitTester())
     }
@@ -249,6 +263,9 @@ final class KeyboardKeysView: UIView {
         var flickLock = false
         /// 已跨過下滑門檻，放開時輸入上方小字。
         var flicked = false
+        /// 觸控板加速：上一次移動的位置與時間。
+        var lastMoveX: CGFloat = 0
+        var lastMoveTime: TimeInterval = 0
 
         init(frame: KeyFrame, start: CGPoint) {
             self.frame = frame
@@ -302,6 +319,7 @@ final class KeyboardKeysView: UIView {
 
         if !gestures.values.contains(where: { $0.frame.id == frame.id }) {
             caps[frame.id]?.setPressed(false)
+            caps[frame.id]?.setFlickProgress(0)
         }
         if gesture.isTrackpad { setTrackpadMode(false) }
 
@@ -332,10 +350,17 @@ final class KeyboardKeysView: UIView {
         switch gesture.frame.key.type {
         case .space:
             if gesture.isTrackpad {
+                // 手指速度決定倍率：慢慢移一次一個字，快速滑動一次跳 2～3 個字
+                let now = ProcessInfo.processInfo.systemUptime
+                let elapsed = max(now - gesture.lastMoveTime, 0.001)
+                let speed = abs(point.x - gesture.lastMoveX) / CGFloat(elapsed)
+                gesture.lastMoveX = point.x
+                gesture.lastMoveTime = now
                 let steps = Int(((point.x - gesture.trackpadAnchor) / trackpadStep).rounded(.towardZero))
                 if steps != 0 {
                     gesture.trackpadAnchor += CGFloat(steps) * trackpadStep
-                    onTrackpadMove?(steps)
+                    let factor = speed > 700 ? 3 : (speed > 350 ? 2 : 1)
+                    onTrackpadMove?(steps * factor)
                 }
             } else if !gesture.consumed {
                 if gesture.start.y - point.y > swipeUpDistance {
@@ -369,7 +394,10 @@ final class KeyboardKeysView: UIView {
             gesture.flickLock = true
             gesture.work?.cancel()  // 不再等長按的替代字元選單
         }
-        let armed = dy >= max(18, gesture.frame.rect.height * 0.5)
+        let threshold = max(18, gesture.frame.rect.height * 0.5)
+        // 小字跟著手指往下移、放大，字母淡出（比照 iPad 原生）
+        caps[gesture.frame.id]?.setFlickProgress(min(max(dy / threshold, 0), 1))
+        let armed = dy >= threshold
         guard armed != gesture.flicked else { return }
         gesture.flicked = armed
         showPreview(for: gesture.frame, text: armed ? secondary : nil)
@@ -393,6 +421,8 @@ final class KeyboardKeysView: UIView {
         gesture.isTrackpad = true
         gesture.consumed = true
         gesture.trackpadAnchor = gesture.last.x
+        gesture.lastMoveX = gesture.last.x
+        gesture.lastMoveTime = ProcessInfo.processInfo.systemUptime
         setTrackpadMode(true)
     }
 
@@ -411,8 +441,13 @@ final class KeyboardKeysView: UIView {
             return
         }
         let rect = frame.rect
-        let width = max(rect.width * 1.65, 40)
-        let x = min(max(rect.midX - width / 2, 0), max(bounds.width - width, 0))
+        let letterWidth = max(rect.width * 1.65, 40)
+        // 組字中：右側多一格顯示打下去之後的第一候選字（FR-U28）
+        let candidate = override == nil ? previewCandidateProvider(frame.key) : nil
+        let candidateWidth: CGFloat = candidate == nil ? 0 : letterWidth * 0.85
+        let width = letterWidth + candidateWidth
+        // 預覽的字母那一格對齊按鍵中央；靠邊時整個預覽貼齊邊緣
+        let x = min(max(rect.midX - letterWidth / 2, 0), max(bounds.width - width, 0))
         // 預覽高度所有列一致：以第一列能往上伸展的極限為準（不能超出鍵盤範圍）
         let bottom = rect.minY + 2
         let height: CGFloat = 62
@@ -422,8 +457,14 @@ final class KeyboardKeysView: UIView {
             return
         }
         previewView.frame = CGRect(x: x, y: top, width: width, height: bottom - top)
-        previewLabel.frame = previewView.bounds
+        previewLabel.frame = CGRect(x: 0, y: 0, width: letterWidth, height: bottom - top)
         previewLabel.text = text
+        previewCandidateLabel.isHidden = candidate == nil
+        previewCandidateLabel.text = candidate
+        previewCandidateLabel.frame = CGRect(x: letterWidth, y: 0, width: candidateWidth, height: bottom - top)
+        previewCandidateLabel.layer.cornerRadius = 8
+        previewCandidateLabel.layer.maskedCorners = [.layerMaxXMinYCorner, .layerMaxXMaxYCorner]
+        previewCandidateLabel.layer.masksToBounds = true
         previewView.isHidden = false
         bringSubviewToFront(previewView)
     }

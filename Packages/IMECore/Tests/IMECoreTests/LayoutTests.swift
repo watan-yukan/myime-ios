@@ -115,33 +115,32 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(z.minX, 70.0, accuracy: 0.6)  // 量測 70.0（含 spacer 的間距 14.7）
         XCTAssertEqual(z.minX - shift.maxX, 14.7, accuracy: 0.4)
 
-        // 底排（FR-U26，UI 規格 4.5）：, . 對齊 n m；123 維持原生寬度，空白與 Return 分配其餘空間
+        // 底排（FR-U26，UI 規格 4.5）：123、表情維持原生寬度；, . Return 與字母鍵同寬；空白鍵用剩下的寬度
         let page = try find(f, row: 3) { $0.type == .page }
         XCTAssertEqual(page.width, 47.1, accuracy: 0.6)  // 量測 47.1
         let space = try find(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 161.4, accuracy: 1.0)  // 430 pt 寬約 163
+        XCTAssertEqual(space.width, 184.7, accuracy: 1.0)
         let ret = try find(f, row: 3) { $0.type == .returnKey }
-        XCTAssertEqual(ret.width, 57.7, accuracy: 1.0)  // 430 pt 寬約 58
+        XCTAssertEqual(ret.width, 36.3, accuracy: 0.3)
         XCTAssertEqual(ret.maxX, 430 - 6.5, accuracy: 0.01)
     }
 
-    func testCommaAndPeriodAlignWithNAndM() throws {
+    func testCommaPeriodAndReturnAreLetterWidthAtAllWidths() throws {
         let layout = try loadIPhone()
         for landscape in [false, true] {
             let widths: [CGFloat] = landscape ? [667, 844, 932] : [320, 375, 390, 393, 402, 430, 440]
             for width in widths {
                 let f = try frames(layout, width: width, landscape: landscape)
-                let n = try find(f, row: 2) { $0.output == "n" }
-                let m = try find(f, row: 2) { $0.output == "m" }
-                let comma = try find(f, row: 3) { $0.output == "," }
-                let period = try find(f, row: 3) { $0.output == "." }
+                let letter = try find(f, row: 2) { $0.output == "n" }
                 let message = "寬 \(width)\(landscape ? " 橫向" : "")"
-                XCTAssertEqual(comma.minX, n.minX, accuracy: 0.01, message)
-                XCTAssertEqual(comma.width, n.width, accuracy: 0.01, message)
-                XCTAssertEqual(period.minX, m.minX, accuracy: 0.01, message)
-                XCTAssertEqual(period.width, m.width, accuracy: 0.01, message)
+                let matchers: [(LayoutKey) -> Bool] = [{ $0.output == "," }, { $0.output == "." }, { $0.type == .returnKey }]
+                for matches in matchers {
+                    let rect = try find(f, row: 3, matches)
+                    XCTAssertEqual(rect.width, letter.width, accuracy: 1.0, message)
+                }
+                let comma = try find(f, row: 3) { $0.output == "," }
                 let space = try find(f, row: 3) { $0.type == .space }
-                XCTAssertEqual(comma.minX - space.maxX, 6, accuracy: 0.01, "空白鍵右緣留一個鍵距：\(message)")
+                XCTAssertEqual(comma.minX - space.maxX, 6, accuracy: 0.01, "空白鍵緊接著逗號：\(message)")
             }
         }
     }
@@ -193,9 +192,9 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(a.minX, 156, accuracy: 1.0)  // 量測 156
 
         let space = try find(f, row: 3) { $0.type == .space }
-        XCTAssertEqual(space.width, 307.3, accuracy: 1.5)  // , . 對齊 n m 後空白鍵縮短
+        XCTAssertEqual(space.width, 341.7, accuracy: 1.5)  // , . Return 與字母鍵同寬
         let ret = try find(f, row: 3) { $0.type == .returnKey }
-        XCTAssertEqual(ret.width, 98.2, accuracy: 1.5)
+        XCTAssertEqual(ret.width, 63.6, accuracy: 0.5)
     }
 
     // MARK: - 每一列都左右切齊（任何螢幕寬度）

@@ -24,10 +24,10 @@
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
           { "type": "emoji", "width": 1.29 },
-          { "type": "space", "width": 4.4 },
-          { "output": ",", "shiftOutput": "!", "secondary": "!", "alignWith": "n" },
-          { "output": ".", "shiftOutput": "?", "secondary": "?", "alignWith": "m" },
-          { "type": "return", "width": 2.2 }
+          { "type": "space", "width": 5.09 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "type": "return", "width": 1.0 }
         ] }
       ],
       "landscapeRows": [
@@ -47,10 +47,10 @@
         { "keys": [
           { "type": "page", "target": "numbers", "label": "123", "width": 1.0 },
           { "type": "emoji", "width": 1.0 },
-          { "type": "space", "width": 4.83 },
-          { "output": ",", "shiftOutput": "!", "secondary": "!", "alignWith": "n" },
-          { "output": ".", "shiftOutput": "?", "secondary": "?", "alignWith": "m" },
-          { "type": "return", "width": 2.0 }
+          { "type": "space", "width": 5.37 },
+          { "output": ",", "shiftOutput": "!", "secondary": "!" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "type": "return", "width": 1.0 }
         ] }
       ]
     },

@@ -78,6 +78,33 @@ final class KeyCapView: UIView {
         updateColors()
     }
 
+    /// 下滑輸入的動畫（比照 iPad 原生，FR-U25）：`progress` 0～1，
+    /// 上方小字往下移到字母的位置並放大，字母同時往下淡出；到 1 時小字改成一般字色。
+    func setFlickProgress(_ progress: CGFloat) {
+        let p = min(max(progress, 0), 1)
+        guard content.secondary != nil, !secondaryLabel.isHidden else { return }
+        if p == 0 {
+            secondaryLabel.transform = .identity
+            label.transform = .identity
+            label.alpha = 1
+            updateColors()
+            return
+        }
+        let travel = label.center.y - secondaryLabel.center.y
+        let scale = 1 + p * 1.1
+        secondaryLabel.transform = CGAffineTransform(translationX: 0, y: travel * p).scaledBy(x: scale, y: scale)
+        label.transform = CGAffineTransform(translationX: 0, y: bounds.height * 0.3 * p)
+        label.alpha = 1 - p
+        if let palette {
+            secondaryLabel.textColor = p >= 1 ? palette[.keyText].uiColor : palette[.keySecondaryText].uiColor
+        }
+    }
+
+    private func place(_ view: UIView, in rect: CGRect) {
+        view.bounds = CGRect(origin: .zero, size: rect.size)
+        view.center = CGPoint(x: rect.midX, y: rect.midY)
+    }
+
     /// 觸控板模式：鍵帽文字隱藏（FR-U04）。
     func setLabelsHidden(_ hidden: Bool) {
         labelsHidden = hidden
@@ -128,10 +155,11 @@ final class KeyCapView: UIView {
             // 上緣小字約 10 pt，字母往下移一點避免重疊（UI 規格 4.5）
             let smallSize = min(11, max(8, bounds.height * 0.23)) * CGFloat(themeMetrics.fontScale)
             secondaryLabel.font = UIFont.systemFont(ofSize: smallSize)
-            secondaryLabel.frame = CGRect(x: 0, y: 2, width: bounds.width, height: smallSize + 2)
-            label.frame = bounds.insetBy(dx: 2, dy: 2).offsetBy(dx: 0, dy: bounds.height * 0.07)
+            // 用 bounds + center 排版：下滑動畫會對這兩個 label 套 transform，不能直接設 frame
+            place(secondaryLabel, in: CGRect(x: 0, y: 2, width: bounds.width, height: smallSize + 2))
+            place(label, in: bounds.insetBy(dx: 2, dy: 2).offsetBy(dx: 0, dy: bounds.height * 0.07))
         } else {
-            label.frame = bounds.insetBy(dx: 2, dy: 2)
+            place(label, in: bounds.insetBy(dx: 2, dy: 2))
         }
         imageView.frame = bounds
 
