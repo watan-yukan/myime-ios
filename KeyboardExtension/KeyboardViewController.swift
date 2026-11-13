@@ -96,6 +96,12 @@ final class KeyboardViewController: UIInputViewController {
     /// 撐開鍵盤高度用的隱形 view：上下貼齊 root，高度 = 期望高度。
     /// `allowsSelfSizing` 的鍵盤由「內容」決定高度，直接約束 root 的高度會被系統剔除。
     private let sizerView = UIView()
+    /// 非原生主題的底色：上方兩角圓角（一定看得到）。
+    private let backgroundView = UIView()
+    /// 往鍵盤上方延伸的同色圓角底：系統沒有裁切時，可蓋住系統外框上緣那一段（實驗，FR-T）。
+    private let backgroundExtensionView = UIView()
+    private let backgroundCornerRadius: CGFloat = 16
+    private let backgroundExtensionHeight: CGFloat = 24
     private var sizerHeight: NSLayoutConstraint?
     private var configuredKey = ""
     private var pageForcedByKeyboardType = false
@@ -127,6 +133,14 @@ final class KeyboardViewController: UIInputViewController {
         root.addSubview(candidateBar)
         root.addSubview(keysView)
         setupSizer(in: root)
+        for background in [backgroundExtensionView, backgroundView] {
+            background.isUserInteractionEnabled = false
+            background.isHidden = true
+            background.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
+            root.insertSubview(background, at: 0)
+        }
+        root.insertSubview(backgroundExtensionView, belowSubview: backgroundView)
+        root.clipsToBounds = false  // 讓延伸的底色有機會畫到鍵盤上方
         setupGlobeButton()
         root.addSubview(candidatePanel)
         root.addSubview(emojiPanel)
@@ -414,8 +428,17 @@ final class KeyboardViewController: UIInputViewController {
         let palette = theme.palette(isDark: isDark)
         // 原生主題用系統鍵盤底色（透明），和系統容器上方的圓角區域一致；其他主題才自己塗底色
         let usesSystemBackground = theme.id == "native"
-        rootView.backgroundColor = usesSystemBackground ? .clear : palette[.keyboardBackground].uiColor
-        candidateBar.usesSystemBackground = usesSystemBackground
+        // 底色改由兩塊上方圓角的 view 畫（候選列透明），非原生主題的鍵盤上緣才會是圓角
+        rootView.backgroundColor = .clear
+        candidateBar.usesSystemBackground = true
+        let backgroundColor = palette[.keyboardBackground].uiColor
+        for background in [backgroundView, backgroundExtensionView] {
+            background.backgroundColor = backgroundColor
+            background.isHidden = usesSystemBackground
+        }
+        // 表情頁會蓋住候選列，也要有同樣的圓角
+        emojiPanel.layer.cornerRadius = usesSystemBackground ? 0 : backgroundCornerRadius
+        emojiPanel.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         keysView.applyTheme(palette: palette, metrics: theme.metrics)
         candidateBar.applyTheme(palette: palette, metrics: theme.metrics)
         candidatePanel.applyTheme(palette: palette)
@@ -575,6 +598,14 @@ final class KeyboardViewController: UIInputViewController {
         if let sizerHeight, abs(sizerHeight.constant - requested) > 0.5 {
             sizerHeight.constant = requested
         }
+
+        // 底色：一塊貼齊鍵盤（上方圓角），一塊往上延伸（系統沒裁切時蓋住系統外框上緣）
+        backgroundView.frame = root.bounds
+        backgroundView.layer.cornerRadius = backgroundCornerRadius
+        backgroundExtensionView.frame = CGRect(
+            x: 0, y: -backgroundExtensionHeight,
+            width: width, height: backgroundExtensionHeight + backgroundCornerRadius * 2)
+        backgroundExtensionView.layer.cornerRadius = backgroundCornerRadius + 4
 
         candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
         keysView.frame = CGRect(x: 0, y: candidateBarHeight, width: width, height: keysHeight)
