@@ -57,6 +57,8 @@ final class KeyboardKeysView: UIView {
 
     private let previewView = UIView()
     private let previewLabel = UILabel()
+    /// 下滑輸入時，放大預覽裡從上方滑下來的小字（FR-U25）。
+    private let previewSecondaryLabel = UILabel()
 
     private let longPressDelay: TimeInterval = 0.45
     private let backspaceDelay: TimeInterval = 0.4
@@ -80,6 +82,10 @@ final class KeyboardKeysView: UIView {
         previewLabel.textAlignment = .center
         previewLabel.font = UIFont.systemFont(ofSize: 40)
         previewView.addSubview(previewLabel)
+        previewSecondaryLabel.textAlignment = .center
+        previewSecondaryLabel.font = UIFont.systemFont(ofSize: 40)
+        previewSecondaryLabel.isHidden = true
+        previewView.addSubview(previewSecondaryLabel)
         addSubview(previewView)
     }
 
@@ -105,6 +111,7 @@ final class KeyboardKeysView: UIView {
         previewView.layer.shadowColor = UIColor.black.cgColor
         previewView.layer.shadowOpacity = 0.25
         previewLabel.textColor = palette[.popupText].uiColor
+        previewSecondaryLabel.textColor = palette[.popupText].uiColor
     }
 
     /// 狀態改變（Shift、中英模式、頁面）後更新鍵帽文字。
@@ -375,7 +382,7 @@ final class KeyboardKeysView: UIView {
 
     /// 往下滑輸入上方小字（FR-U25）：往下為主時鎖定在原鍵；超過半個鍵高才算數，滑回去可取消。
     private func handleFlick(_ gesture: Gesture, to point: CGPoint) {
-        guard flickEnabled, let secondary = gesture.frame.key.secondary else { return }
+        guard flickEnabled, gesture.frame.key.secondary != nil else { return }
         let dx = point.x - gesture.start.x
         let dy = point.y - gesture.start.y
         if !gesture.flickLock {
@@ -386,11 +393,12 @@ final class KeyboardKeysView: UIView {
         }
         let threshold = max(18, gesture.frame.rect.height * 0.5)
         // 小字跟著手指往下移、放大，字母淡出（比照 iPad 原生）
-        caps[gesture.frame.id]?.setFlickProgress(min(max(dy / threshold, 0), 1))
+        let progress = min(max(dy / threshold, 0), 1)
+        caps[gesture.frame.id]?.setFlickProgress(progress)
+        setPreviewFlickProgress(progress)
         let armed = dy >= threshold
         guard armed != gesture.flicked else { return }
         gesture.flicked = armed
-        showPreview(for: gesture.frame, text: armed ? secondary : nil)
         if armed { onSecondaryArmed?() }
     }
 
@@ -442,10 +450,40 @@ final class KeyboardKeysView: UIView {
             return
         }
         previewView.frame = CGRect(x: x, y: top, width: width, height: bottom - top)
+        // 先清掉上一次下滑動畫的 transform，再設定大小
+        previewLabel.transform = .identity
+        previewLabel.alpha = 1
+        previewSecondaryLabel.transform = .identity
+        previewSecondaryLabel.isHidden = true
         previewLabel.frame = previewView.bounds
+        previewSecondaryLabel.frame = previewView.bounds
         previewLabel.text = text
+        previewSecondaryLabel.text = flickEnabled ? frame.key.secondary : nil
         previewView.isHidden = false
         bringSubviewToFront(previewView)
+    }
+
+    /// 放大預覽裡的下滑動畫（與鍵帽同步，FR-U25）：小字從預覽上方縮小的位置往下移到中央並放大，
+    /// 字母同時往下淡出；`progress` 到 1 時小字取代字母。
+    private func setPreviewFlickProgress(_ progress: CGFloat) {
+        guard !previewView.isHidden, previewSecondaryLabel.text != nil else { return }
+        let p = min(max(progress, 0), 1)
+        let height = previewView.bounds.height
+        if p == 0 {
+            previewLabel.transform = .identity
+            previewLabel.alpha = 1
+            previewSecondaryLabel.transform = .identity
+            previewSecondaryLabel.isHidden = true
+            return
+        }
+        previewSecondaryLabel.isHidden = false
+        let scale = 0.45 + 0.55 * p
+        // 起點在預覽上方約 3 成處（仍在預覽框內，不需要裁切），終點在中央
+        previewSecondaryLabel.transform = CGAffineTransform(translationX: 0, y: -height * 0.3 * (1 - p))
+            .scaledBy(x: scale, y: scale)
+        previewSecondaryLabel.alpha = 0.5 + 0.5 * p
+        previewLabel.transform = CGAffineTransform(translationX: 0, y: height * 0.2 * p)  // 移動距離不大，淡出時不會跑到預覽框外太多
+        previewLabel.alpha = 1 - p
     }
 
     private func showAlternates(_ gesture: Gesture) {
