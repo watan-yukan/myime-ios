@@ -38,6 +38,9 @@ final class CandidateBarView: UIView {
     private let messageLabel = UILabel()
     private let expandButton = UIButton(type: .system)
     private let separator = UIView()
+    /// 剛送出的字：在候選列正中間顯示，1 秒淡出（不看輸入框也能確認打對）。
+    private let flashLabel = UILabel()
+    private let flashDuration: TimeInterval = 1.0
     private var candidateButtons: [UIButton] = []
     private var suggestionButtons: [UIButton] = []
     private var suggestions: [PhraseSuggestion] = []
@@ -69,6 +72,12 @@ final class CandidateBarView: UIView {
         addSubview(expandButton)
 
         addSubview(separator)
+
+        flashLabel.font = UIFont.systemFont(ofSize: 38)
+        flashLabel.textAlignment = .center
+        flashLabel.alpha = 0
+        flashLabel.isUserInteractionEnabled = false
+        addSubview(flashLabel)
 
         let tools: [(Tool, String, String)] = [
             (.dismiss, "keyboard.chevron.compact.down", "收起鍵盤"),
@@ -104,7 +113,29 @@ final class CandidateBarView: UIView {
     /// - Parameters:
     ///   - hint: 沒在組字時顯示的提示（例如尚未匯入碼表）。
     ///   - candidateLimit: 設定的候選字數上限；0 表示依寬度自動。
+    /// 顯示剛送出的字，1 秒淡出並微微放大；前一個還沒淡完就直接換成新的字。
+    func flashCommitted(_ text: String) {
+        flashLabel.layer.removeAllAnimations()
+        flashLabel.text = text
+        flashLabel.textColor = palette?[.candidateText].uiColor ?? .label
+        flashLabel.transform = .identity
+        flashLabel.alpha = 1
+        bringSubviewToFront(flashLabel)
+        UIView.animate(withDuration: flashDuration, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+            self.flashLabel.alpha = 0
+            self.flashLabel.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
+        }
+    }
+
+    /// 開始打下一個字根時，提示立刻消失。
+    private func cancelFlash() {
+        flashLabel.layer.removeAllAnimations()
+        flashLabel.alpha = 0
+        flashLabel.transform = .identity
+    }
+
     func update(state: ComposerState, hint: String?, candidateLimit: Int, suggestions: [PhraseSuggestion] = []) {
+        if state.isComposing { cancelFlash() }
         self.state = state
         self.hint = hint
         self.candidateLimit = candidateLimit
@@ -186,6 +217,8 @@ final class CandidateBarView: UIView {
         let width = bounds.width
         let height = bounds.height
         separator.frame = CGRect(x: 0, y: height - 0.5, width: width, height: 0.5)
+        flashLabel.bounds = CGRect(x: 0, y: 0, width: 80, height: height)
+        flashLabel.center = CGPoint(x: width / 2, y: height / 2)
 
         if state.isComposing {
             layoutComposing(width: width, height: height)

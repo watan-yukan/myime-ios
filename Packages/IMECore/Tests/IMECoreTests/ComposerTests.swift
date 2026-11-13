@@ -40,6 +40,25 @@ final class ComposerTests: XCTestCase {
         XCTAssertEqual(c.state.candidates, ["三"])
     }
 
+    func testLastCommittedCandidateOnlyForChineseCommits() {
+        var c = composer()
+        type("a", into: &c)
+        XCTAssertNil(c.lastCommittedCandidate, "還在組字")
+        c.handle(.space)
+        XCTAssertEqual(c.lastCommittedCandidate, "一", "空白送出第一候選")
+        type("a", into: &c)
+        XCTAssertNil(c.lastCommittedCandidate, "下一個事件開始時清除")
+        c.handle(.selectCandidate(1))
+        XCTAssertEqual(c.lastCommittedCandidate, "二", "點選候選字")
+
+        type("ab", into: &c)
+        c.handle(.returnKey)
+        XCTAssertNil(c.lastCommittedCandidate, "Return 送出英文字母，不算")
+        type("ab", into: &c)
+        c.handle(.swipeUpSpace)
+        XCTAssertNil(c.lastCommittedCandidate, "上滑送英文，不算")
+    }
+
     func testUppercaseKeysAreTreatedAsCodes() {
         var c = composer()
         type("AB", into: &c)

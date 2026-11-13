@@ -241,6 +241,7 @@ final class KeyboardViewController: UIInputViewController {
         newSession.output = output
         newSession.phraseStore = phraseStore
         newSession.onChange = { [weak self] in self?.refreshEverything() }
+        newSession.onCandidateCommitted = { [weak self] text in self?.candidateBar.flashCommitted(text) }
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
