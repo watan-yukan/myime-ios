@@ -44,14 +44,6 @@ public final class KeyboardSession {
     public var mode: InputMode { composer.mode }
     public var composerState: ComposerState { composer.state }
 
-    /// 按住這個鍵時，放大預覽要附帶顯示的第一候選字（打下去之後的結果）。
-    /// Shift 狀態下字母會直接輸出大寫、不進組字，所以不顯示。
-    public func previewFirstCandidate(for key: LayoutKey) -> String? {
-        guard key.type == .char, shift.mode == .off,
-              let output = key.output, output.count == 1, let character = output.first else { return nil }
-        return composer.previewFirstCandidate(appending: character)
-    }
-
     // MARK: - 按鍵
 
     /// 一個鍵被確定按下（放開，或因多指快打而提早送出）。

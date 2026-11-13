@@ -288,7 +288,6 @@ final class KeyboardViewController: UIInputViewController {
             self.haptic.prepare()
         }
         keysView.contentProvider = { [weak self] key in self?.content(for: key) ?? KeyContent() }
-        keysView.previewCandidateProvider = { [weak self] key in self?.session?.previewFirstCandidate(for: key) }
         keysView.alternatesProvider = { [weak self] key in self?.alternates(for: key) ?? [] }
         keysView.previewHeadroom = candidateBarHeight
 

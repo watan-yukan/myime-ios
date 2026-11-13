@@ -40,22 +40,6 @@ final class ComposerTests: XCTestCase {
         XCTAssertEqual(c.state.candidates, ["三"])
     }
 
-    func testPreviewFirstCandidateLooksAheadWithoutChangingState() {
-        var c = composer()
-        XCTAssertEqual(c.previewFirstCandidate(appending: "a"), "一", "還沒組字時，預覽第一個鍵的結果")
-        type("a", into: &c)
-        XCTAssertEqual(c.previewFirstCandidate(appending: "b"), "三")
-        XCTAssertEqual(c.previewFirstCandidate(appending: "B"), "三", "大寫字母也當字根")
-        XCTAssertNil(c.previewFirstCandidate(appending: "z"), "打下去沒有候選")
-        XCTAssertNil(c.previewFirstCandidate(appending: "1"), "不是字根鍵")
-        XCTAssertEqual(c.state.code, "a", "預覽不改變組字")
-        XCTAssertEqual(c.state.candidates, ["一", "二"])
-
-        var kana = composer()
-        type("ka", into: &kana)
-        XCTAssertEqual(kana.previewFirstCandidate(appending: ","), "か", "逗號是字根鍵")
-    }
-
     func testUppercaseKeysAreTreatedAsCodes() {
         var c = composer()
         type("AB", into: &c)

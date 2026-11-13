@@ -44,18 +44,6 @@ public struct Composer {
         self.codeKeys = Set("abcdefghijklmnopqrstuvwxyz").union(source.extraCodeKeys)
     }
 
-    /// 預覽：如果再打 `character`，第一候選字會是什麼（放大預覽顯示用）。
-    /// 只在中文模式、`character` 是字根鍵時有值；打下去沒有候選（未完成、錯碼、超過碼長）時回傳 nil。
-    /// 只查詢，不改變狀態。
-    public func previewFirstCandidate(appending character: Character) -> String? {
-        guard mode == .chinese else { return nil }
-        let key = Character(character.lowercased())
-        guard codeKeys.contains(key) else { return nil }
-        let code = state.code + String(key)
-        guard code.count <= source.maxCodeLength else { return nil }
-        return source.candidates(for: code).first
-    }
-
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
     @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
