@@ -241,7 +241,6 @@ final class KeyboardViewController: UIInputViewController {
         newSession.output = output
         newSession.phraseStore = phraseStore
         newSession.onChange = { [weak self] in self?.refreshEverything() }
-        newSession.onCandidateCommitted = { [weak self] text in self?.candidateBar.flashCommitted(text) }
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
@@ -491,7 +490,9 @@ final class KeyboardViewController: UIInputViewController {
             let isLetter = base.first?.isLetter == true
             let text = isLetter ? (session.showsUppercase ? base.uppercased() : base.lowercased()) : base
             // 下滑輸入的小字（FR-U25）；設定關閉時不顯示
-            let secondary = settings.flickSecondary ? key.secondary : nil
+            // Shift 時換成另一組符號（FR-U25），省去切到符號頁
+            let shifted = session.shift.mode != .off ? (key.shiftSecondary ?? key.secondary) : key.secondary
+            let secondary = settings.flickSecondary ? shifted : nil
             return KeyContent(text: key.label ?? text, secondary: secondary)
         case .shift:
             switch session.shift.mode {

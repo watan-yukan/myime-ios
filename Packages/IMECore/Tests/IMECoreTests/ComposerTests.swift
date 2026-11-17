@@ -40,25 +40,6 @@ final class ComposerTests: XCTestCase {
         XCTAssertEqual(c.state.candidates, ["三"])
     }
 
-    func testLastCommittedCandidateOnlyForChineseCommits() {
-        var c = composer()
-        type("a", into: &c)
-        XCTAssertNil(c.lastCommittedCandidate, "還在組字")
-        c.handle(.space)
-        XCTAssertEqual(c.lastCommittedCandidate, "一", "空白送出第一候選")
-        type("a", into: &c)
-        XCTAssertNil(c.lastCommittedCandidate, "下一個事件開始時清除")
-        c.handle(.selectCandidate(1))
-        XCTAssertEqual(c.lastCommittedCandidate, "二", "點選候選字")
-
-        type("ab", into: &c)
-        c.handle(.returnKey)
-        XCTAssertNil(c.lastCommittedCandidate, "Return 送出英文字母，不算")
-        type("ab", into: &c)
-        c.handle(.swipeUpSpace)
-        XCTAssertNil(c.lastCommittedCandidate, "上滑送英文，不算")
-    }
-
     func testUppercaseKeysAreTreatedAsCodes() {
         var c = composer()
         type("AB", into: &c)
@@ -122,13 +103,20 @@ final class ComposerTests: XCTestCase {
 
     // MARK: - 錯碼（FR-K07）
 
-    func testInvalidCodeIsKeptAndSpaceDoesNothing() {
+    func testSpaceWithoutCandidatesSendsLettersAsEnglish() {
         var c = composer()
         type("az", into: &c)
         XCTAssertEqual(c.state.status, .invalid)
         XCTAssertEqual(c.state.candidates, [])
-        XCTAssertEqual(c.handle(.space), [], "錯碼時空白不送字")
-        XCTAssertEqual(c.state.code, "az", "保留字根讓使用者修正")
+        XCTAssertEqual(c.handle(.space), [.insert("az")], "錯碼時空白把字根當英文送出")
+        XCTAssertFalse(c.state.isComposing)
+
+        type("tsu", into: &c)
+        XCTAssertEqual(c.state.status, .incomplete)
+        XCTAssertEqual(c.handle(.space), [.insert("tsu")], "還沒打完也送出英文")
+
+        type("abcdab", into: &c)
+        XCTAssertEqual(c.handle(.space), [.insert("abcdab")], "超過碼長也送出英文")
     }
 
     func testBackspaceFixesInvalidCode() {

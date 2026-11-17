@@ -34,6 +34,8 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
     public var label: String?
     /// 鍵上方的小字，往下滑輸入（FR-U25，iPad 與 iPhone）。
     public var secondary: String?
+    /// Shift 狀態時的上方小字與下滑輸入字元（FR-U25）；省略時沿用 `secondary`。
+    public var shiftSecondary: String?
     /// 長按替代字元（FR-U06）。
     public var alternates: [String]
     /// 寬度，單位是「字母鍵寬」。
@@ -53,7 +55,8 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         alternates: [String] = [],
         width: Double = 1,
         target: String? = nil,
-        alignWith: String? = nil
+        alignWith: String? = nil,
+        shiftSecondary: String? = nil
     ) {
         self.type = type
         self.output = output
@@ -64,6 +67,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         self.width = width
         self.target = target
         self.alignWith = alignWith
+        self.shiftSecondary = shiftSecondary
     }
 
     /// 字元鍵簡寫。
@@ -72,7 +76,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, output, shiftOutput, label, secondary, alternates, width, target, alignWith
+        case type, output, shiftOutput, label, secondary, alternates, width, target, alignWith, shiftSecondary
     }
 
     public init(from decoder: Decoder) throws {
@@ -91,6 +95,7 @@ public struct LayoutKey: Equatable, Sendable, Decodable {
         width = try container.decodeIfPresent(Double.self, forKey: .width) ?? 1
         target = try container.decodeIfPresent(String.self, forKey: .target)
         alignWith = try container.decodeIfPresent(String.self, forKey: .alignWith)
+        shiftSecondary = try container.decodeIfPresent(String.self, forKey: .shiftSecondary)
     }
 
     /// 鍵帽上顯示的文字。

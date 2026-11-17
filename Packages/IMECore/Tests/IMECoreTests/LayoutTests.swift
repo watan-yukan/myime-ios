@@ -153,6 +153,21 @@ final class LayoutTests: XCTestCase {
         XCTAssertEqual(comma.shiftOutput, "!")
         XCTAssertEqual(period.secondary, "?")
         XCTAssertEqual(period.shiftOutput, "?")
+        XCTAssertEqual(comma.shiftSecondary, "、")
+        XCTAssertEqual(period.shiftSecondary, "。")
+    }
+
+    func testIPhoneShiftSecondaryCharacters() throws {
+        let rows = try XCTUnwrap(try loadIPhone().page("alpha")?.rows)
+        func shifted(_ row: Int) -> String {
+            rows[row].keys.filter { $0.output?.first?.isLetter == true }.compactMap(\.shiftSecondary).joined()
+        }
+        XCTAssertEqual(shifted(0), "[]{}#%^*+=")
+        XCTAssertEqual(shifted(1), "_\\|~<>€£¥")
+        XCTAssertEqual(shifted(2), "…·•–—「」")
+        let landscape = try XCTUnwrap(try loadIPhone().page("alpha")?.landscapeRows)
+        XCTAssertEqual(
+            landscape[0].keys.compactMap(\.shiftSecondary), rows[0].keys.compactMap(\.shiftSecondary), "橫向同一組")
     }
 
     func testIPhoneLettersHaveIPadSecondaryCharacters() throws {

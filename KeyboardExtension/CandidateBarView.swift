@@ -3,9 +3,9 @@ import IMECore
 
 /// 候選列：永遠佔位，鍵盤高度不因開始組字而跳動（FR-U21）。
 ///
-/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），接著是候選字，放不下時有展開鈕（FR-K06）
+/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字整排置中，放不下時有展開鈕（FR-K06）
 /// - 沒在組字：顯示「收起鍵盤」按鈕（主題在 MyIME App 的「主題」頁切換）；表情符號改由左下角的表情鍵開啟
-/// - 錯碼時顯示「無此字」（FR-K07）
+/// - 沒有候選時不顯示提示；按空白會把字根當英文送出（FR-K07）
 final class CandidateBarView: UIView {
     enum Tool {
         case dismiss
@@ -38,9 +38,6 @@ final class CandidateBarView: UIView {
     private let messageLabel = UILabel()
     private let expandButton = UIButton(type: .system)
     private let separator = UIView()
-    /// 剛送出的字：在候選列正中間顯示，1 秒淡出（不看輸入框也能確認打對）。
-    private let flashLabel = UILabel()
-    private let flashDuration: TimeInterval = 1.0
     private var candidateButtons: [UIButton] = []
     private var suggestionButtons: [UIButton] = []
     private var suggestions: [PhraseSuggestion] = []
@@ -72,12 +69,6 @@ final class CandidateBarView: UIView {
         addSubview(expandButton)
 
         addSubview(separator)
-
-        flashLabel.font = UIFont.systemFont(ofSize: 38)
-        flashLabel.textAlignment = .center
-        flashLabel.alpha = 0
-        flashLabel.isUserInteractionEnabled = false
-        addSubview(flashLabel)
 
         let tools: [(Tool, String, String)] = [
             (.dismiss, "keyboard.chevron.compact.down", "收起鍵盤"),
@@ -113,29 +104,7 @@ final class CandidateBarView: UIView {
     /// - Parameters:
     ///   - hint: 沒在組字時顯示的提示（例如尚未匯入碼表）。
     ///   - candidateLimit: 設定的候選字數上限；0 表示依寬度自動。
-    /// 顯示剛送出的字，1 秒淡出並微微放大；前一個還沒淡完就直接換成新的字。
-    func flashCommitted(_ text: String) {
-        flashLabel.layer.removeAllAnimations()
-        flashLabel.text = text
-        flashLabel.textColor = palette?[.candidateText].uiColor ?? .label
-        flashLabel.transform = .identity
-        flashLabel.alpha = 1
-        bringSubviewToFront(flashLabel)
-        UIView.animate(withDuration: flashDuration, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
-            self.flashLabel.alpha = 0
-            self.flashLabel.transform = CGAffineTransform(scaleX: 1.15, y: 1.15)
-        }
-    }
-
-    /// 開始打下一個字根時，提示立刻消失。
-    private func cancelFlash() {
-        flashLabel.layer.removeAllAnimations()
-        flashLabel.alpha = 0
-        flashLabel.transform = .identity
-    }
-
     func update(state: ComposerState, hint: String?, candidateLimit: Int, suggestions: [PhraseSuggestion] = []) {
-        if state.isComposing { cancelFlash() }
         self.state = state
         self.hint = hint
         self.candidateLimit = candidateLimit
@@ -160,7 +129,6 @@ final class CandidateBarView: UIView {
 
         messageLabel.textColor = text.withAlphaComponent(0.6)
         switch (composing, state.status) {
-        case (true, .invalid): messageLabel.text = "無此字"
         case (false, _): messageLabel.text = hint
         default: messageLabel.text = nil
         }
@@ -217,8 +185,6 @@ final class CandidateBarView: UIView {
         let width = bounds.width
         let height = bounds.height
         separator.frame = CGRect(x: 0, y: height - 0.5, width: width, height: 0.5)
-        flashLabel.bounds = CGRect(x: 0, y: 0, width: 80, height: height)
-        flashLabel.center = CGPoint(x: width / 2, y: height / 2)
 
         if state.isComposing {
             layoutComposing(width: width, height: height)
@@ -263,10 +229,16 @@ final class CandidateBarView: UIView {
         if candidateLimit > 0 { fit = min(fit, candidateLimit) }
         visibleCandidateCount = candidateButtons.isEmpty ? 0 : fit
 
-        var x = left
+        // 候選字整排置中於候選列；放不下置中時，靠在字根框右邊
+        let widths = candidates.prefix(visibleCandidateCount).map {
+            max(40, textWidth($0, font: candidateFont) + 16)
+        }
+        let rowWidth = widths.reduce(0, +)
+        let limit = (needsExpand ? rightEdge - 36 : rightEdge) - rowWidth
+        var x = min(max(left, (width - rowWidth) / 2), max(left, limit))
         for (index, button) in candidateButtons.enumerated() {
             if index < visibleCandidateCount {
-                let candidateWidth = max(40, textWidth(candidates[index], font: candidateFont) + 16)
+                let candidateWidth = widths[index]
                 button.frame = CGRect(x: x, y: 0, width: candidateWidth, height: height)
                 button.isHidden = false
                 x += candidateWidth

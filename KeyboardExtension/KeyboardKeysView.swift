@@ -328,7 +328,7 @@ final class KeyboardKeysView: UIView {
             return
         }
         if committed, !gesture.consumed {
-            if gesture.flicked, let secondary = frame.key.secondary {
+            if gesture.flicked, let secondary = contentProvider(frame.key).secondary {  // Shift 時是另一組
                 onTap?(LayoutKey(char: secondary), byRollover)
             } else {
                 onTap?(frame.key, byRollover)
@@ -382,7 +382,7 @@ final class KeyboardKeysView: UIView {
 
     /// 往下滑輸入上方小字（FR-U25）：往下為主時鎖定在原鍵；超過半個鍵高才算數，滑回去可取消。
     private func handleFlick(_ gesture: Gesture, to point: CGPoint) {
-        guard flickEnabled, gesture.frame.key.secondary != nil else { return }
+        guard flickEnabled, contentProvider(gesture.frame.key).secondary != nil else { return }
         let dx = point.x - gesture.start.x
         let dy = point.y - gesture.start.y
         if !gesture.flickLock {
@@ -394,8 +394,12 @@ final class KeyboardKeysView: UIView {
         let threshold = max(18, gesture.frame.rect.height * 0.5)
         // 小字跟著手指往下移、放大，字母淡出（比照 iPad 原生）
         let progress = min(max(dy / threshold, 0), 1)
-        caps[gesture.frame.id]?.setFlickProgress(progress)
-        setPreviewFlickProgress(progress)
+        // iPhone：動畫只在放大預覽裡；iPad 沒有放大預覽，動畫在鍵帽上
+        if showsPreview {
+            setPreviewFlickProgress(progress)
+        } else {
+            caps[gesture.frame.id]?.setFlickProgress(progress)
+        }
         let armed = dy >= threshold
         guard armed != gesture.flicked else { return }
         gesture.flicked = armed
@@ -458,7 +462,7 @@ final class KeyboardKeysView: UIView {
         previewLabel.frame = previewView.bounds
         previewSecondaryLabel.frame = previewView.bounds
         previewLabel.text = text
-        previewSecondaryLabel.text = flickEnabled ? frame.key.secondary : nil
+        previewSecondaryLabel.text = flickEnabled ? contentProvider(frame.key).secondary : nil
         previewView.isHidden = false
         bringSubviewToFront(previewView)
     }

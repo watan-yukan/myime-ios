@@ -9,15 +9,15 @@
     "alpha": {
       "rows": [
         { "keys": [
-          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+          { "output": "q", "secondary": "1", "shiftSecondary": "[" }, { "output": "w", "secondary": "2", "shiftSecondary": "]" }, { "output": "e", "secondary": "3", "shiftSecondary": "{" }, { "output": "r", "secondary": "4", "shiftSecondary": "}" }, { "output": "t", "secondary": "5", "shiftSecondary": "#" }, { "output": "y", "secondary": "6", "shiftSecondary": "%" }, { "output": "u", "secondary": "7", "shiftSecondary": "^" }, { "output": "i", "secondary": "8", "shiftSecondary": "*" }, { "output": "o", "secondary": "9", "shiftSecondary": "+" }, { "output": "p", "secondary": "0", "shiftSecondary": "=" }
         ] },
         { "inset": 0.5, "keys": [
-          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+          { "output": "a", "secondary": "@", "shiftSecondary": "_" }, { "output": "s", "secondary": "#", "shiftSecondary": "\\" }, { "output": "d", "secondary": "$", "shiftSecondary": "|" }, { "output": "f", "secondary": "&", "shiftSecondary": "~" }, { "output": "g", "secondary": "*", "shiftSecondary": "<" }, { "output": "h", "secondary": "(", "shiftSecondary": ">" }, { "output": "j", "secondary": ")", "shiftSecondary": "€" }, { "output": "k", "secondary": "'", "shiftSecondary": "£" }, { "output": "l", "secondary": "\"", "shiftSecondary": "¥" }
         ] },
         { "keys": [
           { "type": "shift", "width": 1.34 },
           { "type": "spacer", "width": 0.24 },
-          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
+          { "output": "z", "secondary": "%", "shiftSecondary": "…" }, { "output": "x", "secondary": "-", "shiftSecondary": "·" }, { "output": "c", "secondary": "+", "shiftSecondary": "•" }, { "output": "v", "secondary": "=", "shiftSecondary": "–" }, { "output": "b", "secondary": "/", "shiftSecondary": "—" }, { "output": "n", "secondary": ";", "shiftSecondary": "「" }, { "output": "m", "secondary": ":", "shiftSecondary": "」" },
           { "type": "spacer", "width": 0.24 },
           { "type": "backspace", "width": 1.35 }
         ] },
@@ -25,22 +25,22 @@
           { "type": "page", "target": "numbers", "label": "123", "width": 1.29 },
           { "type": "emoji", "width": 1.29 },
           { "type": "space", "width": 5.09 },
-          { "output": ",", "shiftOutput": "!", "secondary": "!" },
-          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "output": ",", "shiftOutput": "!", "secondary": "!", "shiftSecondary": "、" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?", "shiftSecondary": "。" },
           { "type": "return", "width": 1.0 }
         ] }
       ],
       "landscapeRows": [
         { "keys": [
-          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
+          { "output": "q", "secondary": "1", "shiftSecondary": "[" }, { "output": "w", "secondary": "2", "shiftSecondary": "]" }, { "output": "e", "secondary": "3", "shiftSecondary": "{" }, { "output": "r", "secondary": "4", "shiftSecondary": "}" }, { "output": "t", "secondary": "5", "shiftSecondary": "#" }, { "output": "y", "secondary": "6", "shiftSecondary": "%" }, { "output": "u", "secondary": "7", "shiftSecondary": "^" }, { "output": "i", "secondary": "8", "shiftSecondary": "*" }, { "output": "o", "secondary": "9", "shiftSecondary": "+" }, { "output": "p", "secondary": "0", "shiftSecondary": "=" }
         ] },
         { "inset": 0.5, "keys": [
-          { "output": "a", "secondary": "@" }, { "output": "s", "secondary": "#" }, { "output": "d", "secondary": "$" }, { "output": "f", "secondary": "&" }, { "output": "g", "secondary": "*" }, { "output": "h", "secondary": "(" }, { "output": "j", "secondary": ")" }, { "output": "k", "secondary": "'" }, { "output": "l", "secondary": "\"" }
+          { "output": "a", "secondary": "@", "shiftSecondary": "_" }, { "output": "s", "secondary": "#", "shiftSecondary": "\\" }, { "output": "d", "secondary": "$", "shiftSecondary": "|" }, { "output": "f", "secondary": "&", "shiftSecondary": "~" }, { "output": "g", "secondary": "*", "shiftSecondary": "<" }, { "output": "h", "secondary": "(", "shiftSecondary": ">" }, { "output": "j", "secondary": ")", "shiftSecondary": "€" }, { "output": "k", "secondary": "'", "shiftSecondary": "£" }, { "output": "l", "secondary": "\"", "shiftSecondary": "¥" }
         ] },
         { "keys": [
           { "type": "shift", "width": 1.325 },
           { "type": "spacer", "width": 0.22 },
-          { "output": "z", "secondary": "%" }, { "output": "x", "secondary": "-" }, { "output": "c", "secondary": "+" }, { "output": "v", "secondary": "=" }, { "output": "b", "secondary": "/" }, { "output": "n", "secondary": ";" }, { "output": "m", "secondary": ":" },
+          { "output": "z", "secondary": "%", "shiftSecondary": "…" }, { "output": "x", "secondary": "-", "shiftSecondary": "·" }, { "output": "c", "secondary": "+", "shiftSecondary": "•" }, { "output": "v", "secondary": "=", "shiftSecondary": "–" }, { "output": "b", "secondary": "/", "shiftSecondary": "—" }, { "output": "n", "secondary": ";", "shiftSecondary": "「" }, { "output": "m", "secondary": ":", "shiftSecondary": "」" },
           { "type": "spacer", "width": 0.22 },
           { "type": "backspace", "width": 1.325 }
         ] },
@@ -48,8 +48,8 @@
           { "type": "page", "target": "numbers", "label": "123", "width": 1.0 },
           { "type": "emoji", "width": 1.0 },
           { "type": "space", "width": 5.37 },
-          { "output": ",", "shiftOutput": "!", "secondary": "!" },
-          { "output": ".", "shiftOutput": "?", "secondary": "?" },
+          { "output": ",", "shiftOutput": "!", "secondary": "!", "shiftSecondary": "、" },
+          { "output": ".", "shiftOutput": "?", "secondary": "?", "shiftSecondary": "。" },
           { "type": "return", "width": 1.0 }
         ] }
       ]

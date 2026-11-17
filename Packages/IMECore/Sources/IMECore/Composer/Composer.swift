@@ -11,9 +11,6 @@ public struct Composer {
     public static let maxBufferLength = 32
 
     public private(set) var state: ComposerState = .idle
-    /// 最近一次 `handle` 送出的候選字（空白、點選、數字選字、遇到非字根時送出第一候選）；
-    /// 送出英文字母或沒有送出時為 nil。每次 `handle` 開始時清除。
-    public private(set) var lastCommittedCandidate: String?
     public var display: ComposingDisplay
     /// 目前輸入模式（FR-K08），以 `.toggleInputMode` 切換。
     public private(set) var mode: InputMode = .chinese
@@ -50,7 +47,6 @@ public struct Composer {
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
     @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
-        lastCommittedCandidate = nil
         if mode == .english, event != .toggleInputMode {
             return handleEnglish(event)
         }
@@ -151,8 +147,8 @@ public struct Composer {
     private mutating func handleSpace() -> [OutputAction] {
         guard state.isComposing else { return idleSpace(mode: .chinese) }
         guard let first = state.candidates.first else {
-            // 錯碼或尚未打完：不送出，保留字根讓使用者修正（FR-K07）
-            return []
+            // 沒有候選（錯碼、尚未打完、超過碼長）：把字根當英文送出（FR-K07，2026-11-18 改）
+            return sendEnglish()
         }
         return commit(first)
     }
@@ -187,8 +183,6 @@ public struct Composer {
     }
 
     private mutating func commit(_ text: String) -> [OutputAction] {
-        // 送出的是候選字（不是英文字母）時記下來，讓 UI 顯示「剛送出的字」提示
-        lastCommittedCandidate = state.candidates.contains(text) ? text : nil
         state = .idle
         selectionWindowStart = 0
         return [.insert(text)]

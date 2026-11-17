@@ -18,8 +18,6 @@ public final class KeyboardSession {
     public weak var output: TextOutput?
     /// 狀態改變（組字、Shift、頁面、模式）時通知畫面更新。
     public var onChange: (() -> Void)?
-    /// 按空白送出候選字時通知（候選列中央的淡出提示用，FR-U29）。
-    public var onCandidateCommitted: ((String) -> Void)?
 
     /// 常用詞記錄；設定後會依 `settings.phraseLearning` 開關（FR-S05）。
     public var phraseStore: PhraseStore? {
@@ -154,8 +152,6 @@ public final class KeyboardSession {
         composer.capitalizeEnglishSend = settings.autoCapitalizeEnglishSend
             && AutoCapitalization.shouldCapitalize(textBeforeCursor: before, type: autocapitalizationType)
         execute(composer.handle(event))
-        // 送字提示只在「按空白送出」時出現（點候選字、數字選字時眼睛已經在候選列上）
-        if event == .space, let committed = composer.lastCommittedCandidate { onCandidateCommitted?(committed) }
         if event == .space || event == .backspace || event == .returnKey { refreshAutoCapitalization() }
         refreshSuggestions()
         changed()
