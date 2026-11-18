@@ -45,14 +45,18 @@ public final class PhraseStore {
     private static let manualBonus = 1_000_000.0
 
     public private(set) var records: [String: PhraseRecord] = [:]
+    /// 使用者從候選列長按刪除的詞（FR-S09）：不再記錄、不再建議（含之後的內建詞庫），
+    /// 可在 App 的常用詞頁恢復；手動新增同一個詞也會自動恢復。
+    public private(set) var hidden: Set<String> = []
     /** 每次內容有變動就加 1，呼叫端用來判斷是否需要存檔。 */
     public private(set) var revision = 0
     /// 關閉時不記錄、也不提供建議（FR-S05）。
     public var isEnabled = true
     private var recent = ""
 
-    public init(records: [PhraseRecord] = []) {
+    public init(records: [PhraseRecord] = [], hidden: Set<String> = []) {
         for record in records { self.records[record.text] = record }
+        self.hidden = hidden
     }
 
     // MARK: - 記錄
@@ -86,6 +90,7 @@ public final class PhraseStore {
     }
 
     private func bump(_ phrase: String, now: Date) {
+        guard !hidden.contains(phrase) else { return }
         revision += 1
         if var existing = records[phrase] {
             existing.count += 1
@@ -117,6 +122,7 @@ public final class PhraseStore {
             let prefix = String(tail.suffix(prefixLength))
             for record in records.values where record.text.count > prefix.count && record.text.hasPrefix(prefix) {
                 if record.source == .learned, record.count < Self.minLearnedCount { continue }
+                if hidden.contains(record.text) { continue }
                 let suffix = String(record.text.dropFirst(prefix.count))
                 guard seen.insert(suffix).inserted else { continue }
                 results.append((PhraseSuggestion(text: suffix, phrase: record.text), prefixLength, score(of: record, now: now)))
@@ -143,6 +149,7 @@ public final class PhraseStore {
     public func add(manual text: String) -> Bool {
         guard text.count >= 2, text.allSatisfy(Self.isCJK) else { return false }
         revision += 1
+        hidden.remove(text)  // 使用者明確要這個詞，取消隱藏
         var record = records[text] ?? PhraseRecord(text: text)
         record.source = .manual
         records[text] = record
@@ -154,6 +161,22 @@ public final class PhraseStore {
         records[text] = nil
     }
 
+    /// 從候選列長按刪除建議詞（FR-S09）：刪掉記錄並隱藏，之後不再學習、不再建議。
+    public func hide(_ phrase: String) {
+        revision += 1
+        records[phrase] = nil
+        hidden.insert(phrase)
+    }
+
+    /// 恢復被隱藏的詞（App 常用詞頁）；之前的使用記錄已刪除，要重新學習。
+    public func unhide(_ phrase: String) {
+        guard hidden.remove(phrase) != nil else { return }
+        revision += 1
+    }
+
+    /// 隱藏的詞，依 Unicode 排序（管理頁顯示用）。
+    public var sortedHidden: [String] { hidden.sorted() }
+
     /// 清除所有學來的詞；手動新增的保留。
     public func removeAllLearned() {
         revision += 1
@@ -163,6 +186,7 @@ public final class PhraseStore {
     public func removeAll() {
         revision += 1
         records.removeAll()
+        hidden.removeAll()
     }
 
     /// 依分數由高到低（管理頁顯示用）。
@@ -205,6 +229,8 @@ public struct PhraseFileStore {
     private struct File: Codable {
         var schemaVersion: Int
         var items: [PhraseRecord]
+        /// 隱藏的詞（FR-S09）。選填欄位，舊檔沒有也能讀，舊版 App 讀新檔會忽略，不需升版。
+        var hidden: [String]?
     }
 
     private var migrator: JSONMigrator {
@@ -235,11 +261,13 @@ public struct PhraseFileStore {
               let file = try? Self.decoder().decode(File.self, from: data) else {
             return (PhraseStore(), writable)
         }
-        return (PhraseStore(records: file.items), writable)
+        return (PhraseStore(records: file.items, hidden: Set(file.hidden ?? [])), writable)
     }
 
     public func save(_ store: PhraseStore) throws {
-        let file = File(schemaVersion: Self.currentSchemaVersion, items: store.sortedRecords())
+        let file = File(
+            schemaVersion: Self.currentSchemaVersion, items: store.sortedRecords(),
+            hidden: store.hidden.isEmpty ? nil : store.sortedHidden)
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         let data = try encoder.encode(file)

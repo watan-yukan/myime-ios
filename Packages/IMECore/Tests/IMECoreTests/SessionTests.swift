@@ -536,6 +536,25 @@ final class SessionSuggestionTests: XCTestCase {
         }
     }
 
+    func testDeleteSuggestionHidesItImmediately() {
+        let (session, output, store) = make()
+        for _ in 0..<2 {
+            output.preload("")
+            session.contextChanged()
+            typeWord(session)
+        }
+        output.preload("")
+        session.contextChanged()
+        session.tap(LayoutKey(char: "a"))
+        session.tap(LayoutKey(type: .space))
+        XCTAssertEqual(session.suggestions.map(\.phrase), ["信義"])
+
+        session.deleteSuggestion(0)
+        XCTAssertEqual(session.suggestions, [], "刪除後候選列馬上不再顯示")
+        XCTAssertEqual(store.sortedHidden, ["信義"])
+        session.deleteSuggestion(5)  // 超出範圍不動作
+    }
+
     func testLearnedPhraseIsSuggestedAfterTheFirstCharacter() {
         let (session, output, _) = make()
         for _ in 0..<2 {

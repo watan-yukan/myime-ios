@@ -20,6 +20,12 @@ final class CandidateBarView: UIView {
     var onClear: (() -> Void)?
     var onTool: ((Tool) -> Void)?
     var onSelectSuggestion: ((Int) -> Void)?
+    /// 長按建議詞後確認刪除（FR-S09）。
+    var onDeleteSuggestion: ((Int) -> Void)?
+    /// 長按建議詞進入刪除確認時（觸覺回饋用）。
+    var onSuggestionLongPress: (() -> Void)?
+    /// 沒開完整取用時無法存檔，長按只提示、不刪除。
+    var canDeleteSuggestions = true
     /// iPad 的按鍵區右下角已有收合鍵，候選列就不再放一顆。
     var showsDismissTool = true {
         didSet { setNeedsLayout() }
@@ -50,6 +56,9 @@ final class CandidateBarView: UIView {
     private var candidateButtons: [UIButton] = []
     private var suggestionButtons: [UIButton] = []
     private var suggestions: [PhraseSuggestion] = []
+    /// 長按後等待確認刪除的建議詞（原地變成紅色「刪除」，3 秒沒點就取消）。
+    private var pendingDeleteIndex: Int?
+    private var pendingDeleteTimer: Timer?
     private var toolButtons: [(tool: Tool, button: UIButton)] = []
 
     private let candidateFont = UIFont.systemFont(ofSize: 24)  // UI 規格 5：候選字 24 pt
@@ -108,6 +117,38 @@ final class CandidateBarView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    // MARK: - 建議詞長按刪除（FR-S09）
+
+    private func suggestionTapped(_ index: Int) {
+        if let pending = pendingDeleteIndex {
+            // 確認狀態下：點紅色按鈕刪除，點別的建議詞只取消，不輸入
+            if pending == index, canDeleteSuggestions { onDeleteSuggestion?(index) }
+            clearPendingDelete()
+            render()
+            return
+        }
+        onSelectSuggestion?(index)
+    }
+
+    @objc private func suggestionLongPressed(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began, let index = gesture.view?.tag,
+              suggestions.indices.contains(index), pendingDeleteIndex != index else { return }
+        pendingDeleteIndex = index
+        onSuggestionLongPress?()
+        pendingDeleteTimer?.invalidate()
+        pendingDeleteTimer = Timer.scheduledTimer(withTimeInterval: 3, repeats: false) { [weak self] _ in
+            self?.clearPendingDelete()
+            self?.render()
+        }
+        render()
+    }
+
+    private func clearPendingDelete() {
+        pendingDeleteTimer?.invalidate()
+        pendingDeleteTimer = nil
+        pendingDeleteIndex = nil
+    }
+
     @objc private func codeTapped() {
         guard state.isComposing else { return }
         onSelectEnglish?()
@@ -147,6 +188,7 @@ final class CandidateBarView: UIView {
 
     func update(state: ComposerState, hint: String?, candidateLimit: Int, suggestions: [PhraseSuggestion] = []) {
         if state.isComposing { cancelFlash() }
+        if suggestions != self.suggestions || state.isComposing { clearPendingDelete() }
         self.state = state
         self.hint = hint
         self.candidateLimit = candidateLimit
@@ -196,9 +238,25 @@ final class CandidateBarView: UIView {
                     attributes: [.font: candidateFont, .foregroundColor: text.withAlphaComponent(0.45)])
                 title.append(NSAttributedString(
                     string: suggestion.text, attributes: [.font: candidateFont, .foregroundColor: text]))
-                button.setAttributedTitle(title, for: .normal)
-                button.accessibilityLabel = "建議：\(suggestion.phrase)"
-                button.addAction(UIAction { [weak self] _ in self?.onSelectSuggestion?(index) }, for: .touchUpInside)
+                if index == pendingDeleteIndex {
+                    // 刪除確認：原地變成紅色膠囊
+                    let label = canDeleteSuggestions ? "刪除" : "需完整取用"
+                    button.setAttributedTitle(NSAttributedString(
+                        string: label,
+                        attributes: [.font: UIFont.systemFont(ofSize: 17, weight: .semibold), .foregroundColor: UIColor.white]),
+                        for: .normal)
+                    button.backgroundColor = canDeleteSuggestions ? .systemRed : .systemGray
+                    button.layer.cornerRadius = 10
+                    button.accessibilityLabel = "刪除建議：\(suggestion.phrase)"
+                } else {
+                    button.setAttributedTitle(title, for: .normal)
+                    button.accessibilityLabel = "建議：\(suggestion.phrase)"
+                }
+                button.addAction(UIAction { [weak self] _ in self?.suggestionTapped(index) }, for: .touchUpInside)
+                let longPress = UILongPressGestureRecognizer(target: self, action: #selector(suggestionLongPressed(_:)))
+                longPress.minimumPressDuration = 0.5
+                button.tag = index
+                button.addGestureRecognizer(longPress)
                 button.isHidden = true
                 addSubview(button)
                 suggestionButtons.append(button)
@@ -328,12 +386,16 @@ final class CandidateBarView: UIView {
         var left = sideInset
         for (index, button) in suggestionButtons.enumerated() {
             let title = suggestions.indices.contains(index) ? suggestions[index].phrase : ""
-            let buttonWidth = max(44, textWidth(title, font: candidateFont) + 24)
+            let pending = index == pendingDeleteIndex
+            let buttonWidth = max(pending ? (canDeleteSuggestions ? 64 : 104) : 44, textWidth(title, font: candidateFont) + 24)
             guard left + buttonWidth <= x else {
                 button.isHidden = true
                 continue
             }
-            button.frame = CGRect(x: left, y: 0, width: buttonWidth, height: height)
+            // 刪除確認的紅色膠囊高 38 pt、上下置中（同字根框）
+            button.frame = pending
+                ? CGRect(x: left + 2, y: (height - 38) / 2, width: buttonWidth - 4, height: 38)
+                : CGRect(x: left, y: 0, width: buttonWidth, height: height)
             button.isHidden = false
             left += buttonWidth
         }

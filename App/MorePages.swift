@@ -78,6 +78,22 @@ struct PhrasesPage: View {
                 }
             }
 
+            if !model.hiddenPhrases.isEmpty {
+                Section {
+                    ForEach(model.hiddenPhrases, id: \.self) { phrase in
+                        Text(phrase)
+                            .foregroundStyle(.secondary)
+                            .swipeActions {
+                                Button("恢復") { model.unhidePhrase(phrase) }.tint(.blue)
+                            }
+                    }
+                } header: {
+                    Text("已隱藏（\(model.hiddenPhrases.count)）")
+                } footer: {
+                    Text("在鍵盤候選列長按建議詞刪除的詞會列在這裡，不會再被建議。往左滑可恢復。")
+                }
+            }
+
             if model.phrases.contains(where: { $0.source == .learned }) {
                 Section {
                     Button("清除學來的詞", role: .destructive) { confirmClear = true }

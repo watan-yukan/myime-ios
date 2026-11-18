@@ -161,6 +161,53 @@ final class PhraseStoreTests: XCTestCase {
         XCTAssertNil(store.records["冷門"], "分數最低的先被淘汰")
     }
 
+    // MARK: - 長按刪除與隱藏（FR-S09）
+
+    func testHiddenPhraseIsNeitherSuggestedNorRelearned() {
+        let store = PhraseStore()
+        learn(store, ["天", "氣"], times: 2)
+        store.hide("天氣")
+        XCTAssertNil(store.records["天氣"])
+        XCTAssertEqual(store.suggestions(afterText: "天", now: now), [])
+        learn(store, ["天", "氣"], times: 3)
+        XCTAssertNil(store.records["天氣"], "隱藏的詞不再學習")
+        XCTAssertEqual(store.suggestions(afterText: "天", now: now), [])
+
+        store.unhide("天氣")
+        XCTAssertEqual(store.sortedHidden, [])
+        learn(store, ["天", "氣"], times: 2)
+        XCTAssertEqual(store.suggestions(afterText: "天", now: now).first?.phrase, "天氣", "恢復後重新學習")
+    }
+
+    func testManualAddUnhidesAndRemoveAllClearsHidden() {
+        let store = PhraseStore()
+        store.hide("天氣")
+        XCTAssertTrue(store.add(manual: "天氣"))
+        XCTAssertFalse(store.hidden.contains("天氣"))
+        XCTAssertEqual(store.suggestions(afterText: "天", now: now).first?.phrase, "天氣")
+
+        store.hide("午餐")
+        store.removeAllLearned()
+        XCTAssertEqual(store.sortedHidden, ["午餐"], "清除學來的詞不影響隱藏清單")
+        store.removeAll()
+        XCTAssertEqual(store.sortedHidden, [])
+    }
+
+    func testHiddenListSurvivesFileRoundTripAndOldFilesLoad() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent("imecore-phrases-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("phrases.json")
+
+        let store = PhraseStore()
+        store.hide("天氣")
+        try PhraseFileStore(url: url).save(store)
+        XCTAssertEqual(PhraseFileStore(url: url).load().store.sortedHidden, ["天氣"])
+
+        try Data(#"{ "schemaVersion": 1, "items": [] }"#.utf8).write(to: url)
+        XCTAssertEqual(PhraseFileStore(url: url).load().store.sortedHidden, [], "沒有 hidden 欄位的舊檔照常載入")
+    }
+
     // MARK: - 檔案
 
     func testFileRoundTripKeepsDatesAndSources() throws {

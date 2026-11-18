@@ -22,6 +22,8 @@ final class AppModel: ObservableObject {
     @Published private(set) var containerAvailable = false
     @Published var importState = ImportState.idle
     @Published private(set) var phrases: [PhraseRecord] = []
+    /// 在鍵盤上長按刪除而隱藏的詞（FR-S09）。
+    @Published private(set) var hiddenPhrases: [String] = []
 
     private var phraseStore = PhraseStore()
     private var phrasesWritable = true
@@ -147,6 +149,13 @@ final class AppModel: ObservableObject {
         phrasesWritable = loaded.writable
         phraseStore = loaded.store
         phrases = phraseStore.sortedRecords()
+        hiddenPhrases = phraseStore.sortedHidden
+    }
+
+    func unhidePhrase(_ text: String) {
+        guard phrasesWritable else { return }
+        phraseStore.unhide(text)
+        commitPhraseChanges()
     }
 
     func addPhrase(_ text: String) -> Bool {
@@ -170,6 +179,7 @@ final class AppModel: ObservableObject {
 
     private func commitPhraseChanges() {
         phrases = phraseStore.sortedRecords()
+        hiddenPhrases = phraseStore.sortedHidden
         guard let url = SharedStorage.url(SharedStorage.FileName.phrases) else { return }
         try? PhraseFileStore(url: url).save(phraseStore)
     }
@@ -181,7 +191,7 @@ final class AppModel: ObservableObject {
 
     /// 還原用：以備份的記錄取代目前的常用詞。
     func replacePhrases(with records: [PhraseRecord]) {
-        phraseStore = PhraseStore(records: records)
+        phraseStore = PhraseStore(records: records, hidden: phraseStore.hidden)  // 備份不含隱藏清單，保留目前的
         phrasesWritable = true
         commitPhraseChanges()
     }

@@ -98,6 +98,14 @@ public final class KeyboardSession {
         changed()
     }
 
+    /// 長按刪除候選列上的建議詞（FR-S09）：刪除並隱藏，之後不再建議。
+    public func deleteSuggestion(_ index: Int) {
+        guard suggestions.indices.contains(index), let store = phraseStore else { return }
+        store.hide(suggestions[index].phrase)
+        refreshSuggestions()
+        changed()
+    }
+
     /// 候選列的清除鍵：丟掉目前的字根，不送出（FR-U30）。
     public func clearComposition() {
         perform(.clearComposition)

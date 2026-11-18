@@ -273,6 +273,7 @@ final class KeyboardViewController: UIInputViewController {
         let loaded = PhraseFileStore(url: url).load()
         phraseStore = loaded.store
         phrasesWritable = loaded.writable
+        candidateBar.canDeleteSuggestions = phrasesWritable && hasFullAccess
         savedPhraseRevision = phraseStore.revision
         session?.phraseStore = phraseStore
     }
@@ -315,6 +316,15 @@ final class KeyboardViewController: UIInputViewController {
         }
         candidateBar.onTool = { [weak self] tool in self?.handleTool(tool) }
         candidateBar.onSelectSuggestion = { [weak self] index in self?.session?.acceptSuggestion(index) }
+        candidateBar.onSuggestionLongPress = { [weak self] in
+            guard let self, self.settings.haptics, self.hasFullAccess else { return }
+            self.haptic.impactOccurred()
+            self.haptic.prepare()
+        }
+        candidateBar.onDeleteSuggestion = { [weak self] index in
+            self?.session?.deleteSuggestion(index)
+            self?.savePhrasesIfNeeded(force: true)  // 刪除要馬上存，App 的常用詞頁才看得到
+        }
 
         candidatePanel.onSelect = { [weak self] index in
             self?.session?.selectCandidate(index)
