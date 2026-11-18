@@ -393,7 +393,10 @@ final class KeyboardViewController: UIInputViewController {
         candidatePanel.frame = keysFrame
         candidatePanel.applyTheme(palette: theme.palette(isDark: isDark))
         candidatePanel.layoutIfNeeded()
-        candidatePanel.show(candidates: session.composerState.candidates, startIndex: candidateBar.visibleCandidateCount)
+        let state = session.composerState
+        candidatePanel.show(
+            candidates: state.allCandidates, startIndex: candidateBar.visibleCandidateCount,
+            fuzzyStart: state.candidates.count)
         candidatePanel.isHidden = false
     }
 

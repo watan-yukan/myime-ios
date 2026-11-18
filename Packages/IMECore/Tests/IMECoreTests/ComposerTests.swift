@@ -119,6 +119,54 @@ final class ComposerTests: XCTestCase {
         XCTAssertEqual(c.handle(.space), [.insert("abcdab")], "超過碼長也送出英文")
     }
 
+    // MARK: - 鄰鍵容錯（FR-K15）
+
+    func testNeighborKeyFuzzyCandidatesWhenNoExactMatch() {
+        var c = composer()
+        type("qb", into: &c)  // q 的鄰鍵有 a → ab 有「三」
+        XCTAssertEqual(c.state.candidates, [], "完全相符的候選維持空的")
+        XCTAssertEqual(c.state.fuzzyCandidates, ["三"])
+        XCTAssertEqual(c.state.allCandidates, ["三"])
+        XCTAssertEqual(c.handle(.space), [.insert("qb")], "空白仍把字根當英文送出，不送猜測的字")
+
+        type("qb", into: &c)
+        XCTAssertEqual(c.handle(.selectCandidate(0)), [.insert("三")], "點選才送出容錯候選")
+        XCTAssertNil(c.lastCommittedCandidate, "容錯字不觸發空白送字提示")
+    }
+
+    func testNoFuzzyWhenExactMatchOrSingleLetterOrDisabled() {
+        var c = composer()
+        type("ab", into: &c)
+        XCTAssertEqual(c.state.fuzzyCandidates, [], "有完全相符的字就不猜")
+        c.handle(.contextChanged)
+
+        type("z", into: &c)  // z 的鄰鍵有 a，但只打 1 碼不容錯
+        XCTAssertEqual(c.state.fuzzyCandidates, [])
+        c.handle(.contextChanged)
+
+        type("abcdab", into: &c)
+        XCTAssertEqual(c.state.status, .overLength)
+        XCTAssertEqual(c.state.fuzzyCandidates, [], "超過碼長多半是英文，不猜")
+        c.handle(.contextChanged)
+
+        c.fuzzyNeighborKeys = false
+        type("qb", into: &c)
+        XCTAssertEqual(c.state.fuzzyCandidates, [], "設定關閉時不容錯")
+    }
+
+    func testFuzzyOrderingTakesFirstCandidateOfEachCodeFirstWithoutDuplicates() {
+        let source = DictionaryCandidateSource(["as": ["甲", "乙"], "ad": ["丙", "甲"]], maxCodeLength: 4)
+        // x 的鄰鍵依序 z c s d → as、ad 查得到
+        XCTAssertEqual(NeighborKeys.candidates(for: "ax", source: source), ["甲", "丙", "乙"])
+    }
+
+    func testNumberRowSelectsFuzzyCandidates() {
+        var c = composer()
+        c.numberRowSelection = true
+        type("qb", into: &c)
+        XCTAssertEqual(c.handle(.key("1")), [.insert("三")])
+    }
+
     func testBackspaceFixesInvalidCode() {
         var c = composer()
         type("az", into: &c)

@@ -207,12 +207,16 @@ final class CandidateBarView: UIView {
 
         for button in candidateButtons { button.removeFromSuperview() }
         candidateButtons.removeAll()
-        if composing, state.status == .matched {
-            for (index, candidate) in state.candidates.enumerated() {
+        if composing {
+            let exactCount = state.candidates.count
+            for (index, candidate) in state.allCandidates.enumerated() {
                 let button = UIButton(type: .system)
                 button.titleLabel?.font = candidateFont
                 button.setTitle(candidate, for: .normal)
-                button.setTitleColor(index == 0 ? accent : text, for: .normal)
+                // 容錯候選（FR-K15）淡色顯示：只是猜測，空白鍵不會送出
+                let color = index >= exactCount ? text.withAlphaComponent(0.45) : (index == 0 ? accent : text)
+                button.setTitleColor(color, for: .normal)
+                if index >= exactCount { button.accessibilityLabel = "可能是 \(candidate)" }
                 button.addAction(UIAction { [weak self] _ in self?.onSelectCandidate?(index) }, for: .touchUpInside)
                 button.isHidden = true
                 addSubview(button)
@@ -262,7 +266,7 @@ final class CandidateBarView: UIView {
         let left = codeLabel.frame.maxX + 6
         messageLabel.frame = CGRect(x: left, y: 0, width: max(0, rightEdge - left), height: height)
 
-        let candidates = state.candidates
+        let candidates = state.allCandidates
         var available = rightEdge - left - 4
         var fit = CandidateLayout.fittingCount(
             candidates, availableWidth: available, itemPadding: 16, minItemWidth: 40,
@@ -351,6 +355,7 @@ final class CandidatePanelView: UIView {
     private let pageLabel = UILabel()
     private var palette: ThemePalette?
     private var startIndex = 0
+    private var fuzzyStart = Int.max
 
     private let columns = 5
     private let controlWidth: CGFloat = 56
@@ -385,8 +390,10 @@ final class CandidatePanelView: UIView {
     }
 
     /// - Parameter startIndex: 從哪個候選開始（候選列已顯示的不重複列出）。
-    func show(candidates: [String], startIndex: Int) {
+    /// - Parameter fuzzyStart: 從哪個索引開始是容錯候選（淡色顯示，FR-K15）。
+    func show(candidates: [String], startIndex: Int, fuzzyStart: Int = .max) {
         self.startIndex = startIndex
+        self.fuzzyStart = fuzzyStart
         let rest = Array(candidates.dropFirst(startIndex))
         pager = CandidatePager(candidates: rest, pageSize: max(1, pageSize))
         rebuild()
@@ -409,8 +416,8 @@ final class CandidatePanelView: UIView {
             let button = UIButton(type: .system)
             button.titleLabel?.font = UIFont.systemFont(ofSize: 24)
             button.setTitle(item.text, for: .normal)
-            button.setTitleColor(text, for: .normal)
             let globalIndex = item.index + startIndex
+            button.setTitleColor(globalIndex >= fuzzyStart ? text.withAlphaComponent(0.45) : text, for: .normal)
             button.addAction(UIAction { [weak self] _ in self?.onSelect?(globalIndex) }, for: .touchUpInside)
             addSubview(button)
             cellButtons.append(button)

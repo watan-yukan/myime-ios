@@ -233,6 +233,7 @@ public final class KeyboardSession {
         composer.spaceSwipeUpEnglish = settings.spaceSwipeUpEnglish
         composer.appendSpaceAfterEnglish = settings.spaceSwipeUpAppendSpace
         composer.numberRowSelection = settings.numberRow
+        composer.fuzzyNeighborKeys = settings.fuzzyNeighborKeys
         phraseStore?.isEnabled = settings.phraseLearning
     }
 

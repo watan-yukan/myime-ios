@@ -26,6 +26,8 @@ public struct Composer {
     /// 候選列目前顯示的第一個候選位置（展開候選表翻頁時由 UI 設定）；數字選字以此為起點。
     /// 每次字根改變都會歸零。
     public var selectionWindowStart = 0
+    /// 鄰鍵容錯（FR-K15，預設開啟）。
+    public var fuzzyNeighborKeys = true
     /// 空白鍵上滑直輸英文（FR-E03）；關閉時 `.swipeUpSpace` 不動作（FR-E04，預設開啟）。
     public var spaceSwipeUpEnglish = true
     /// 以英文選項或空白上滑送出英文後，自動補一個空格（FR-E04，預設關閉）。
@@ -70,8 +72,9 @@ public struct Composer {
         case .backspace:
             return handleBackspace()
         case .selectCandidate(let index):
-            guard state.isComposing, state.candidates.indices.contains(index) else { return [] }
-            return commit(state.candidates[index])
+            let all = state.allCandidates  // 含容錯候選
+            guard state.isComposing, all.indices.contains(index) else { return [] }
+            return commit(all[index])
         case .returnKey:
             // 組字中按 Return 送出原始字母，不換行（FR-K12、TBD-17）
             guard state.isComposing else { return [.insert("\n")] }
@@ -130,8 +133,9 @@ public struct Composer {
            let offset = selectionKeys.pageOffset(for: key) {
             // 數字列選字（FR-U22）：該位置沒有候選時不動作，避免誤送數字
             let index = selectionWindowStart + offset
-            guard state.candidates.indices.contains(index) else { return [] }
-            return commit(state.candidates[index])
+            let all = state.allCandidates
+            guard all.indices.contains(index) else { return [] }
+            return commit(all[index])
         }
         guard codeKeys.contains(key) else {
             // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入；符號轉全形（FR-K09）
@@ -188,7 +192,12 @@ public struct Composer {
         } else {
             status = .invalid
         }
-        state = ComposerState(code: code, candidates: candidates, status: status)
+        // 查不到字時才容錯（FR-K15）：2 碼以上、未超過碼長；超過碼長多半是在打英文
+        var fuzzy: [String] = []
+        if fuzzyNeighborKeys, candidates.isEmpty, code.count >= 2, status != .overLength {
+            fuzzy = NeighborKeys.candidates(for: code, source: source)
+        }
+        state = ComposerState(code: code, candidates: candidates, status: status, fuzzyCandidates: fuzzy)
         selectionWindowStart = 0
     }
 
