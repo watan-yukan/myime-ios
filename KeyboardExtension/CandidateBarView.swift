@@ -3,9 +3,9 @@ import IMECore
 
 /// 候選列：永遠佔位，鍵盤高度不因開始組字而跳動（FR-U21）。
 ///
-/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字整排置中，放不下時有展開鈕（FR-K06），
+/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字緊接在字根框右邊，放不下時有展開鈕（FR-K06），
 ///   最右邊是清除字根鍵（FR-U30）
-/// - 按空白送出候選字：送出的字在正中間放大淡出（FR-U29）
+/// - 按空白送出候選字：送出的字在按鍵區中央放大淡出（FR-U29，見 CommitFlashView）
 /// - 沒在組字：顯示「收起鍵盤」按鈕（主題在 MyIME App 的「主題」頁切換）；表情符號改由左下角的表情鍵開啟
 /// - 沒有候選時不顯示提示；按空白會把字根當英文送出（FR-K07）
 final class CandidateBarView: UIView {
@@ -307,13 +307,11 @@ final class CandidateBarView: UIView {
         if candidateLimit > 0 { fit = min(fit, candidateLimit) }
         visibleCandidateCount = candidateButtons.isEmpty ? 0 : fit
 
-        // 候選字整排置中於候選列；放不下置中時，靠在字根框右邊
+        // 候選字緊接在字根框右邊往右排（比照原生）
         let widths = candidates.prefix(visibleCandidateCount).map {
             max(40, textWidth($0, font: candidateFont) + 16)
         }
-        let rowWidth = widths.reduce(0, +)
-        let limit = (needsExpand ? rightEdge - 36 : rightEdge) - rowWidth
-        var x = min(max(left, (width - rowWidth) / 2), max(left, limit))
+        var x = left
         for (index, button) in candidateButtons.enumerated() {
             if index < visibleCandidateCount {
                 let candidateWidth = widths[index]
