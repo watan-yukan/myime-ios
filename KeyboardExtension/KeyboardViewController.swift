@@ -68,6 +68,9 @@ final class KeyboardViewController: UIInputViewController {
     private var layoutFile: KeyboardLayoutFile?
     private var session: KeyboardSession?
     private var phraseStore = PhraseStore()
+    /// 內建詞庫（FR-S02，約 1 MB，以記憶體對應方式讀取）；整個擴充程式共用一份。
+    private static let lexicon: Lexicon? = Bundle.main.url(forResource: "lexicon", withExtension: "txt")
+        .flatMap { Lexicon(url: $0) }
     private var savedPhraseRevision = 0
     private var phrasesWritable = true
     private var settings = KeyboardSettings()
@@ -240,6 +243,7 @@ final class KeyboardViewController: UIInputViewController {
         let newSession = KeyboardSession(source: source, settings: settings)
         newSession.output = output
         newSession.phraseStore = phraseStore
+        newSession.lexicon = Self.lexicon
         newSession.onChange = { [weak self] in self?.refreshEverything() }
         newSession.onCandidateCommitted = { [weak self] text in self?.candidateBar.flashCommitted(text) }
         session = newSession

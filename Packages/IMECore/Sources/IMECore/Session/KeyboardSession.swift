@@ -23,7 +23,11 @@ public final class KeyboardSession {
 
     /// 常用詞記錄；設定後會依 `settings.phraseLearning` 開關（FR-S05）。
     public var phraseStore: PhraseStore? {
-        didSet { phraseStore?.isEnabled = settings.phraseLearning }
+        didSet { configurePhraseStore() }
+    }
+    /// 內建詞庫（FR-S02）；由鍵盤載入後設定，會交給 `phraseStore` 使用。
+    public var lexicon: PhraseLexicon? {
+        didSet { configurePhraseStore() }
     }
     /// 沒在組字時，候選列顯示的常用詞建議（FR-S01）。
     public private(set) var suggestions: [PhraseSuggestion] = []
@@ -192,7 +196,7 @@ public final class KeyboardSession {
 
     /// 只在中文模式、沒有組字時提供建議；組字中候選列要留給候選字。
     private func refreshSuggestions() {
-        guard composer.mode == .chinese, !composer.state.isComposing, let store = phraseStore, store.isEnabled else {
+        guard composer.mode == .chinese, !composer.state.isComposing, let store = phraseStore, store.providesSuggestions else {
             suggestions = []
             return
         }
@@ -242,7 +246,13 @@ public final class KeyboardSession {
         composer.appendSpaceAfterEnglish = settings.spaceSwipeUpAppendSpace
         composer.numberRowSelection = settings.numberRow
         composer.fuzzyNeighborKeys = settings.fuzzyNeighborKeys
+        configurePhraseStore()
+    }
+
+    private func configurePhraseStore() {
         phraseStore?.isEnabled = settings.phraseLearning
+        phraseStore?.lexicon = lexicon
+        phraseStore?.lexiconEnabled = settings.builtinLexicon
     }
 
     private func changed() {

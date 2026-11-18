@@ -59,10 +59,11 @@ struct SettingsPage: View {
 
                 Section {
                     Toggle("記錄常用詞", isOn: $model.settings.phraseLearning)
+                    Toggle("內建詞庫聯想", isOn: $model.settings.builtinLexicon)
                 } header: {
                     Text("常用詞")
                 } footer: {
-                    Text("只用來在你打完一個字後建議常接的詞，不會改變碼表的候選字順序。關閉後不再記錄，也不再顯示建議。")
+                    Text("只用來在你打完一個字後建議常接的詞，不會改變碼表的候選字順序。你用過的詞排在前面，內建詞庫的詞接在後面；在建議詞上長按可刪除。")
                 }
             }
             .navigationTitle("設定")

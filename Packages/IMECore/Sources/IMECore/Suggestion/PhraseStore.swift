@@ -50,9 +50,17 @@ public final class PhraseStore {
     public private(set) var hidden: Set<String> = []
     /** 每次內容有變動就加 1，呼叫端用來判斷是否需要存檔。 */
     public private(set) var revision = 0
-    /// 關閉時不記錄、也不提供建議（FR-S05）。
+    /// 關閉時不記錄、也不建議學來的詞（FR-S05）；內建詞庫另由 `lexiconEnabled` 控制。
     public var isEnabled = true
+    /// 內建詞庫（FR-S02）；排在使用者自己的詞後面。
+    public var lexicon: PhraseLexicon?
+    public var lexiconEnabled = true
     private var recent = ""
+
+    /// 是否可能有任何建議（學來的詞或內建詞庫）。
+    public var providesSuggestions: Bool {
+        isEnabled || (lexiconEnabled && lexicon != nil)
+    }
 
     public init(records: [PhraseRecord] = [], hidden: Set<String> = []) {
         for record in records { self.records[record.text] = record }
@@ -105,7 +113,7 @@ public final class PhraseStore {
 
     /// - Parameter textBeforeCursor: 游標前的文字；取結尾連續的中文字當作前綴。
     public func suggestions(afterText textBeforeCursor: String?, limit: Int = 8, now: Date = Date()) -> [PhraseSuggestion] {
-        guard isEnabled, let text = textBeforeCursor, limit > 0 else { return [] }
+        guard providesSuggestions, let text = textBeforeCursor, limit > 0 else { return [] }
 
         var tail: [Character] = []
         for character in text.reversed() {
@@ -118,7 +126,7 @@ public final class PhraseStore {
 
         var results: [(suggestion: PhraseSuggestion, prefixLength: Int, score: Double)] = []
         var seen = Set<String>()
-        for prefixLength in stride(from: tail.count, through: 1, by: -1) {
+        for prefixLength in stride(from: tail.count, through: 1, by: -1) where isEnabled {
             let prefix = String(tail.suffix(prefixLength))
             for record in records.values where record.text.count > prefix.count && record.text.hasPrefix(prefix) {
                 if record.source == .learned, record.count < Self.minLearnedCount { continue }
@@ -133,7 +141,21 @@ public final class PhraseStore {
             if $0.score != $1.score { return $0.score > $1.score }
             return $0.suggestion.phrase < $1.suggestion.phrase
         }
-        return results.prefix(limit).map { $0.suggestion }
+        var output = results.prefix(limit).map { $0.suggestion }
+
+        // 內建詞庫接在自己的詞後面：較長的前綴優先，同前綴依詞頻（FR-S02）
+        if lexiconEnabled, let lexicon, output.count < limit {
+            outer: for prefixLength in stride(from: tail.count, through: 1, by: -1) {
+                let prefix = String(tail.suffix(prefixLength))
+                for item in lexicon.phrases(withPrefix: prefix, limit: limit * 2) where !hidden.contains(item.text) {
+                    let suffix = String(item.text.dropFirst(prefix.count))
+                    guard seen.insert(suffix).inserted else { continue }
+                    output.append(PhraseSuggestion(text: suffix, phrase: item.text))
+                    if output.count >= limit { break outer }
+                }
+            }
+        }
+        return output
     }
 
     func score(of record: PhraseRecord, now: Date) -> Double {

@@ -93,6 +93,8 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     public var candidateCount = 0
     /// 記錄常用詞（FR-S05）。
     public var phraseLearning = true
+    /// 內建詞庫聯想（FR-S02，預設開啟）。
+    public var builtinLexicon = true
     public var clipboard = ClipboardSettings()
     public var theme = ThemeSelection()
     public var backup = BackupSettings()
@@ -103,7 +105,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
         case schemaVersion, keySound, haptics, autoCapitalize, doubleSpacePeriod
         case spaceSwipeUpEnglish, spaceSwipeUpAppendSpace, autoCapitalizeEnglishSend
         case fullWidthPunctuation, numberRow, flickSecondary, fuzzyNeighborKeys, keycapLabel, composingDisplay, candidateCount
-        case phraseLearning, clipboard, theme, backup
+        case phraseLearning, builtinLexicon, clipboard, theme, backup
     }
 
     public init(from decoder: Decoder) throws {
@@ -127,6 +129,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
         composingDisplay = try c.decodeIfPresent(ComposingDisplay.self, forKey: .composingDisplay) ?? d.composingDisplay
         candidateCount = try c.decodeIfPresent(Int.self, forKey: .candidateCount) ?? d.candidateCount
         phraseLearning = try c.decodeIfPresent(Bool.self, forKey: .phraseLearning) ?? d.phraseLearning
+        builtinLexicon = try c.decodeIfPresent(Bool.self, forKey: .builtinLexicon) ?? d.builtinLexicon
         clipboard = try c.decodeIfPresent(ClipboardSettings.self, forKey: .clipboard) ?? d.clipboard
         theme = try c.decodeIfPresent(ThemeSelection.self, forKey: .theme) ?? d.theme
         backup = try c.decodeIfPresent(BackupSettings.self, forKey: .backup) ?? d.backup

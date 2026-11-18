@@ -254,12 +254,42 @@ struct AboutPage: View {
             }
 
             Section {
-                Text("目前沒有隨 App 內建的第三方資料。日後加入的開源資料（如注音讀音、詞庫）會在這裡列出授權聲明。")
-                    .foregroundStyle(.secondary)
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("內建詞庫（聯想詞）").font(.headline)
+                    Text("取自小麥注音輸入法（McBopomofo）的詞頻資料 phrase.occ，僅保留 2～4 字的詞。")
+                    Text(Self.mcBopomofoLicense)
+                        .font(.caption.monospaced())
+                        .foregroundStyle(.secondary)
+                }
             } header: {
                 Text("第三方授權")
             }
         }
         .navigationTitle("關於與授權")
     }
+
+    /// McBopomofo 的 MIT 授權全文（須隨資料一併附上）；與 Shared/Lexicon/LICENSE-McBopomofo.txt 相同。
+    private static let mcBopomofoLicense = """
+        MIT License
+
+        Copyright (c) 2011-2026 Mengjuei Hsieh et al.
+
+        Permission is hereby granted, free of charge, to any person obtaining a copy \
+        of this software and associated documentation files (the "Software"), to deal \
+        in the Software without restriction, including without limitation the rights \
+        to use, copy, modify, merge, publish, distribute, sublicense, and/or sell \
+        copies of the Software, and to permit persons to whom the Software is \
+        furnished to do so, subject to the following conditions:
+
+        The above copyright notice and this permission notice shall be included in all \
+        copies or substantial portions of the Software.
+
+        THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR \
+        IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, \
+        FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE \
+        AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER \
+        LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, \
+        OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE \
+        SOFTWARE.
+        """
 }
