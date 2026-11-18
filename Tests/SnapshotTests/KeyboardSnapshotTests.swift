@@ -56,8 +56,7 @@ final class KeyboardSnapshotTests: XCTestCase {
             return KeyContent(text: isLetter ? (scene.uppercase ? base.uppercased() : base) : base, secondary: key.secondary)
         case .shift: return KeyContent(symbol: scene.uppercase ? "shift.fill" : "shift")
         case .backspace: return KeyContent(symbol: "delete.left")
-        case .space:
-            return scene.composing != nil ? KeyContent(symbol: "chevron.up.2", isHint: true) : KeyContent()
+        case .space: return KeyContent()
         case .returnKey: return KeyContent(symbol: "return")
         case .page: return KeyContent(text: key.label, isFunctionText: true)
         case .tab: return KeyContent(symbol: "arrow.right.to.line")

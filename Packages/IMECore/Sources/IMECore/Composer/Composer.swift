@@ -11,6 +11,9 @@ public struct Composer {
     public static let maxBufferLength = 32
 
     public private(set) var state: ComposerState = .idle
+    /// 最近一次 `handle` 送出的候選字（送出英文字母時為 nil）；每次 `handle` 開始時清除。
+    /// 空白鍵送字的放大淡出提示用（FR-U29）。
+    public private(set) var lastCommittedCandidate: String?
     public var display: ComposingDisplay
     /// 目前輸入模式（FR-K08），以 `.toggleInputMode` 切換。
     public private(set) var mode: InputMode = .chinese
@@ -47,6 +50,7 @@ public struct Composer {
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
     @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
+        lastCommittedCandidate = nil
         if mode == .english, event != .toggleInputMode {
             return handleEnglish(event)
         }
@@ -79,6 +83,12 @@ public struct Composer {
         case .selectEnglishOption:
             guard state.isComposing else { return [] }
             return sendEnglish()
+        case .clearComposition:
+            // 候選列清除鍵：丟掉字根，不送出（FR-U30）
+            guard state.isComposing else { return [] }
+            state = .idle
+            selectionWindowStart = 0
+            return display == .inline ? [.clearMarked] : []
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
             punctuation.reset()
@@ -100,7 +110,7 @@ public struct Composer {
         case .swipeUpSpace: return [.insert(" ")]
         case .returnKey: return [.insert("\n")]
         case .backspace: return [.deleteBackward]
-        case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode: return []
+        case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode, .clearComposition: return []
         }
     }
 
@@ -183,6 +193,7 @@ public struct Composer {
     }
 
     private mutating func commit(_ text: String) -> [OutputAction] {
+        lastCommittedCandidate = state.candidates.contains(text) ? text : nil
         state = .idle
         selectionWindowStart = 0
         return [.insert(text)]

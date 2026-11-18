@@ -4,8 +4,8 @@ import IMECore
 /// 按鍵區：依版面引擎排列按鍵，並處理所有觸控與手勢。
 ///
 /// - 多指快打、縫隙 / 邊緣歸屬最近鍵：交給 `TouchTracker`（IMECore，已有自動測試）
-/// - 按下放大預覽（FR-U03）、長按空白鍵觸控板（FR-U04）、空白鍵上滑直輸英文（FR-E03）、
-///   ⌫ 長按連續刪除（FR-U09）、長按字母出替代字元（FR-U06）：在這裡依每根手指各自處理
+/// - 按下放大預覽（FR-U03）、空白鍵滑動 / 長按移動游標（FR-U04）、
+///   ⌫ 長按連續刪除（FR-U09）、長按字母出替代字元（FR-U06）、下滑輸入小字（FR-U25）：在這裡依每根手指各自處理
 final class KeyboardKeysView: UIView {
 
     // MARK: - 回呼
@@ -14,7 +14,8 @@ final class KeyboardKeysView: UIView {
     var onTap: ((LayoutKey, Bool) -> Void)?
     /// 手指按下一個鍵（觸覺回饋與按鍵音用）。
     var onKeyDown: ((LayoutKey) -> Void)?
-    var onSpaceSwipeUp: (() -> Void)?
+    /// 下滑輸入上方小字（FR-U25）；和 `onTap` 分開，因為不解除單次 Shift。
+    var onSecondary: ((String) -> Void)?
     var onBackspaceRepeat: ((Int) -> Void)?
     /// 觸控板模式：游標往右（正）或往左（負）移動幾個字元。
     var onTrackpadMove: ((Int) -> Void)?
@@ -63,7 +64,8 @@ final class KeyboardKeysView: UIView {
     private let longPressDelay: TimeInterval = 0.45
     private let backspaceDelay: TimeInterval = 0.4
     private let backspaceInterval: TimeInterval = 0.08
-    private let swipeUpDistance: CGFloat = 28
+    /// 空白鍵上橫向移動超過這個距離就直接進入移動游標模式（不用長按）。
+    private let spaceDragDistance: CGFloat = 10
     /// 觸控板模式每移動多少 pt 游標走一個字（再依手指速度加速）。
     private let trackpadStep: CGFloat = 6
 
@@ -329,7 +331,7 @@ final class KeyboardKeysView: UIView {
         }
         if committed, !gesture.consumed {
             if gesture.flicked, let secondary = contentProvider(frame.key).secondary {  // Shift 時是另一組
-                onTap?(LayoutKey(char: secondary), byRollover)
+                onSecondary?(secondary)
             } else {
                 onTap?(frame.key, byRollover)
             }
@@ -359,15 +361,17 @@ final class KeyboardKeysView: UIView {
                     let factor = speed > 700 ? 3 : (speed > 350 ? 2 : 1)
                     onTrackpadMove?(steps * factor)
                 }
-            } else if !gesture.consumed {
-                if gesture.start.y - point.y > swipeUpDistance {
-                    gesture.consumed = true
-                    gesture.cancelTimers()
-                    caps[gesture.frame.id]?.setPressed(false)
-                    onSpaceSwipeUp?()
-                } else if hypot(point.x - gesture.start.x, point.y - gesture.start.y) > 12 {
-                    gesture.work?.cancel()  // 手指在動，不是長按
+            } else if !gesture.consumed, abs(point.x - gesture.start.x) > spaceDragDistance {
+                // 不用長按：在空白鍵上左右滑動就直接移動游標（FR-U04）。
+                // 錨點設在起點，跨過門檻前移動的距離也算進去，游標不會慢半拍
+                gesture.cancelTimers()
+                startTrackpad(gesture, anchor: gesture.start.x)
+                let steps = Int(((point.x - gesture.trackpadAnchor) / trackpadStep).rounded(.towardZero))
+                if steps != 0 {
+                    gesture.trackpadAnchor += CGFloat(steps) * trackpadStep
+                    onTrackpadMove?(steps)  // 第一段不加速
                 }
+                gesture.lastMoveX = point.x
             }
         case .char:
             if let popup = gesture.alternates {
@@ -418,12 +422,12 @@ final class KeyboardKeysView: UIView {
         }
     }
 
-    private func startTrackpad(_ gesture: Gesture) {
+    private func startTrackpad(_ gesture: Gesture, anchor: CGFloat? = nil) {
         guard gestures.values.contains(where: { $0 === gesture }) else { return }
         gesture.isTrackpad = true
         gesture.consumed = true
-        gesture.trackpadAnchor = gesture.last.x
-        gesture.lastMoveX = gesture.last.x
+        gesture.trackpadAnchor = anchor ?? gesture.last.x
+        gesture.lastMoveX = anchor ?? gesture.last.x
         gesture.lastMoveTime = ProcessInfo.processInfo.systemUptime
         setTrackpadMode(true)
     }

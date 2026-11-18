@@ -3,7 +3,9 @@ import IMECore
 
 /// 候選列：永遠佔位，鍵盤高度不因開始組字而跳動（FR-U21）。
 ///
-/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字整排置中，放不下時有展開鈕（FR-K06）
+/// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字整排置中，放不下時有展開鈕（FR-K06），
+///   最右邊是清除字根鍵（FR-U30）
+/// - 按空白送出候選字：送出的字在正中間放大淡出（FR-U29）
 /// - 沒在組字：顯示「收起鍵盤」按鈕（主題在 MyIME App 的「主題」頁切換）；表情符號改由左下角的表情鍵開啟
 /// - 沒有候選時不顯示提示；按空白會把字根當英文送出（FR-K07）
 final class CandidateBarView: UIView {
@@ -14,6 +16,8 @@ final class CandidateBarView: UIView {
     var onSelectCandidate: ((Int) -> Void)?
     var onSelectEnglish: (() -> Void)?
     var onExpand: (() -> Void)?
+    /// 清除目前的字根，不送出（FR-U30）。
+    var onClear: (() -> Void)?
     var onTool: ((Tool) -> Void)?
     var onSelectSuggestion: ((Int) -> Void)?
     /// iPad 的按鍵區右下角已有收合鍵，候選列就不再放一顆。
@@ -37,7 +41,12 @@ final class CandidateBarView: UIView {
     private let codeLabel = UILabel()
     private let messageLabel = UILabel()
     private let expandButton = UIButton(type: .system)
+    private let clearButton = UIButton(type: .system)
     private let separator = UIView()
+    /// 按空白送出的字：在候選列正中間放大並淡出（FR-U29）。
+    private let flashLabel = UILabel()
+    private let flashDuration: TimeInterval = 1.0
+    private let clearButtonWidth: CGFloat = 40
     private var candidateButtons: [UIButton] = []
     private var suggestionButtons: [UIButton] = []
     private var suggestions: [PhraseSuggestion] = []
@@ -68,7 +77,18 @@ final class CandidateBarView: UIView {
         expandButton.addAction(UIAction { [weak self] _ in self?.onExpand?() }, for: .touchUpInside)
         addSubview(expandButton)
 
+        clearButton.setImage(UIImage(systemName: "xmark.circle.fill"), for: .normal)
+        clearButton.accessibilityLabel = "清除字根"
+        clearButton.addAction(UIAction { [weak self] _ in self?.onClear?() }, for: .touchUpInside)
+        addSubview(clearButton)
+
         addSubview(separator)
+
+        flashLabel.font = UIFont.systemFont(ofSize: 38)
+        flashLabel.textAlignment = .center
+        flashLabel.alpha = 0
+        flashLabel.isUserInteractionEnabled = false
+        addSubview(flashLabel)
 
         let tools: [(Tool, String, String)] = [
             (.dismiss, "keyboard.chevron.compact.down", "收起鍵盤"),
@@ -104,7 +124,29 @@ final class CandidateBarView: UIView {
     /// - Parameters:
     ///   - hint: 沒在組字時顯示的提示（例如尚未匯入碼表）。
     ///   - candidateLimit: 設定的候選字數上限；0 表示依寬度自動。
+    /// 顯示剛用空白送出的字：1 秒內放大到 1.5 倍並淡出；前一個還沒淡完就直接換成新的字。
+    func flashCommitted(_ text: String) {
+        flashLabel.layer.removeAllAnimations()
+        flashLabel.text = text
+        flashLabel.textColor = palette?[.candidateText].uiColor ?? .label
+        flashLabel.transform = .identity
+        flashLabel.alpha = 1
+        bringSubviewToFront(flashLabel)
+        UIView.animate(withDuration: flashDuration, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+            self.flashLabel.alpha = 0
+            self.flashLabel.transform = CGAffineTransform(scaleX: 1.5, y: 1.5)
+        }
+    }
+
+    /// 開始打下一個字根時，提示立刻消失，不和組字區重疊。
+    private func cancelFlash() {
+        flashLabel.layer.removeAllAnimations()
+        flashLabel.alpha = 0
+        flashLabel.transform = .identity
+    }
+
     func update(state: ComposerState, hint: String?, candidateLimit: Int, suggestions: [PhraseSuggestion] = []) {
+        if state.isComposing { cancelFlash() }
         self.state = state
         self.hint = hint
         self.candidateLimit = candidateLimit
@@ -125,7 +167,9 @@ final class CandidateBarView: UIView {
         codeLabel.backgroundColor = palette[.composingBackground].uiColor
         codeLabel.textColor = palette[.composingText].uiColor
 
-        codeLabel.accessibilityLabel = composing ? "送出英文 (state.code)" : nil
+        codeLabel.accessibilityLabel = composing ? "送出英文 \(state.code)" : nil
+        clearButton.isHidden = !composing
+        clearButton.tintColor = text.withAlphaComponent(0.45)
 
         messageLabel.textColor = text.withAlphaComponent(0.6)
         switch (composing, state.status) {
@@ -185,6 +229,9 @@ final class CandidateBarView: UIView {
         let width = bounds.width
         let height = bounds.height
         separator.frame = CGRect(x: 0, y: height - 0.5, width: width, height: 0.5)
+        // 用 bounds + center，放大動畫進行中重新排版也不會跑位
+        flashLabel.bounds = CGRect(x: 0, y: 0, width: 80, height: height)
+        flashLabel.center = CGPoint(x: width / 2, y: height / 2)
 
         if state.isComposing {
             layoutComposing(width: width, height: height)
@@ -205,6 +252,9 @@ final class CandidateBarView: UIView {
             rightEdge -= 44
             button.frame = CGRect(x: rightEdge, y: 0, width: 44, height: height)
         }
+        // 清除字根鍵在最右邊（FR-U30），展開鈕與候選字排在它左邊
+        rightEdge -= clearButtonWidth
+        clearButton.frame = CGRect(x: rightEdge, y: 0, width: clearButtonWidth, height: height)
 
         let codeWidth = textWidth(state.code, font: codeFont) + 20
         codeLabel.frame = CGRect(x: sideInset, y: (height - 38) / 2, width: codeWidth, height: 38)
@@ -250,6 +300,7 @@ final class CandidateBarView: UIView {
 
     private func layoutIdle(width: CGFloat, height: CGFloat) {
         expandButton.isHidden = true
+        clearButton.isHidden = true
         visibleCandidateCount = 0
 
         let buttonWidth: CGFloat = 44

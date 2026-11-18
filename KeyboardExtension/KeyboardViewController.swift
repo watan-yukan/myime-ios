@@ -241,6 +241,7 @@ final class KeyboardViewController: UIInputViewController {
         newSession.output = output
         newSession.phraseStore = phraseStore
         newSession.onChange = { [weak self] in self?.refreshEverything() }
+        newSession.onCandidateCommitted = { [weak self] text in self?.candidateBar.flashCommitted(text) }
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
@@ -291,7 +292,7 @@ final class KeyboardViewController: UIInputViewController {
     private func wireCallbacks() {
         keysView.onTap = { [weak self] key, _ in self?.handleTap(key) }
         keysView.onKeyDown = { [weak self] _ in self?.keyFeedback() }
-        keysView.onSpaceSwipeUp = { [weak self] in self?.session?.swipeUpSpace() }
+        keysView.onSecondary = { [weak self] text in self?.session?.typeSecondary(text) }
         keysView.onBackspaceRepeat = { [weak self] count in self?.session?.repeatBackspace(count: count) }
         keysView.onTrackpadMove = { [weak self] steps in self?.moveCursor(by: steps) }
         keysView.onAlternateSelected = { [weak self] text in self?.insertAlternate(text) }
@@ -308,6 +309,10 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.onSelectCandidate = { [weak self] index in self?.session?.selectCandidate(index) }
         candidateBar.onSelectEnglish = { [weak self] in self?.session?.selectEnglishOption() }
         candidateBar.onExpand = { [weak self] in self?.showCandidatePanel() }
+        candidateBar.onClear = { [weak self] in
+            self?.candidatePanel.isHidden = true
+            self?.session?.clearComposition()
+        }
         candidateBar.onTool = { [weak self] tool in self?.handleTool(tool) }
         candidateBar.onSelectSuggestion = { [weak self] index in self?.session?.acceptSuggestion(index) }
 
@@ -368,7 +373,7 @@ final class KeyboardViewController: UIInputViewController {
 
     private func insertAlternate(_ text: String) {
         textDocumentProxy.insertText(text)
-        session?.refreshAutoCapitalization()
+        session?.didInsertAlternate()  // 比照點擊：解除單次 Shift
         refreshEverything()
     }
 
@@ -502,10 +507,6 @@ final class KeyboardViewController: UIInputViewController {
             }
         case .backspace: return KeyContent(symbol: "delete.left")
         case .space:
-            // 組字中顯示雙折線，提示可上滑送出英文（FR-U27）
-            if session.composerState.isComposing, settings.spaceSwipeUpEnglish {
-                return KeyContent(symbol: "chevron.up.2", isHint: true)
-            }
             return KeyContent()
         case .returnKey: return returnKeyContent()
         case .page: return KeyContent(text: key.label, isFunctionText: true)

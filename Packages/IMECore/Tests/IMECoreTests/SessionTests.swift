@@ -90,6 +90,63 @@ final class SessionTests: XCTestCase {
         XCTAssertEqual(off.composerState.code, "hello")
     }
 
+    // MARK: - 空白送字提示、清除字根（FR-U29、U30）
+
+    func testCommitFlashOnlyForSpaceCommits() {
+        let (session, _) = make()
+        var flashed: [String] = []
+        session.onCandidateCommitted = { flashed.append($0) }
+        tap(session, "ab")
+        session.tap(space)
+        XCTAssertEqual(flashed, ["四"], "按空白送出候選字才提示")
+        tap(session, "a")
+        session.selectCandidate(1)
+        tap(session, "a")
+        session.tap(LayoutKey(char: "1"))
+        tap(session, "a")
+        session.selectEnglishOption()
+        XCTAssertEqual(flashed, ["四"], "點候選字、數字、送英文都不提示")
+        tap(session, "zz")
+        session.tap(space)
+        XCTAssertEqual(flashed, ["四"], "沒有候選、空白送出英文時不提示")
+    }
+
+    func testClearCompositionDropsCodeWithoutOutput() {
+        let (session, output) = make()
+        tap(session, "ab")
+        session.clearComposition()
+        XCTAssertFalse(session.composerState.isComposing)
+        XCTAssertEqual(output.visibleText, "")
+        session.clearComposition()
+        XCTAssertEqual(output.visibleText, "", "沒在組字時清除鍵不動作")
+
+        let (inline, inlineOutput) = make { $0.composingDisplay = .inline }
+        tap(inline, "ab")
+        XCTAssertEqual(inlineOutput.visibleText, "ab")
+        inline.clearComposition()
+        XCTAssertEqual(inlineOutput.visibleText, "", "輸入框內的字根也清掉")
+    }
+
+    // MARK: - Shift 與下滑小字（FR-U25）
+
+    func testSecondaryKeepsShiftButTapAndAlternateClearIt() {
+        let (session, output) = make { $0.fullWidthPunctuation = false }
+        session.tap(shiftKey)
+        XCTAssertEqual(session.shift.mode, .once)
+        session.typeSecondary("#")
+        session.typeSecondary("%")
+        XCTAssertEqual(output.visibleText, "#%")
+        XCTAssertEqual(session.shift.mode, .once, "下滑輸入小字後仍保持 Shift")
+        tap(session, "a")
+        XCTAssertEqual(output.visibleText, "#%A")
+        XCTAssertEqual(session.shift.mode, .off, "點擊字母後解除單次 Shift")
+
+        session.tap(shiftKey)
+        output.insertText("é")
+        session.didInsertAlternate()
+        XCTAssertEqual(session.shift.mode, .off, "長按替代字元比照點擊，解除單次 Shift")
+    }
+
     func testReturnSendsRawLettersWhileComposingElseNewline() {
         let (session, output) = make()
         tap(session, "ab")

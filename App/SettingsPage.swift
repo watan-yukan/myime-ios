@@ -32,13 +32,12 @@ struct SettingsPage: View {
                 }
 
                 Section {
-                    Toggle("空白鍵上滑直輸英文", isOn: $model.settings.spaceSwipeUpEnglish)
                     Toggle("送出英文後自動補空格", isOn: $model.settings.spaceSwipeUpAppendSpace)
                     Toggle("送出的英文套用自動大寫", isOn: $model.settings.autoCapitalizeEnglishSend)
                 } header: {
                     Text("中英混打")
                 } footer: {
-                    Text("組字時在空白鍵上快速上滑，或點候選列最左邊的字根，就能把打的字母當英文送出，不用切換鍵盤。")
+                    Text("組字時點候選列最左邊的字根、按 Return，或打到沒有對應的字再按空白，就能把打的字母當英文送出，不用切換鍵盤。")
                 }
 
                 Section {
