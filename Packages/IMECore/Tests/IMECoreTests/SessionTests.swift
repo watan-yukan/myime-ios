@@ -435,6 +435,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(s.numberRow, "FR-U22：預設關閉")
         XCTAssertTrue(s.flickSecondary, "FR-U25：下滑輸入預設開啟")
         XCTAssertTrue(s.fuzzyNeighborKeys, "FR-K15：鄰鍵容錯預設開啟")
+        XCTAssertTrue(s.commitFlash, "FR-U29：空白送字放大提示預設開啟")
         XCTAssertEqual(s.composingDisplay, .bar, "FR-K13：預設顯示在鍵盤上方")
         XCTAssertEqual(s.theme, ThemeSelection(id: "native", appearance: .system))
         XCTAssertEqual(s.clipboard.maxItems, 20)
@@ -469,6 +470,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.haptics)
         XCTAssertTrue(s.flickSecondary, "舊設定檔沒有這個欄位時用預設值")
         XCTAssertTrue(s.fuzzyNeighborKeys)
+        XCTAssertTrue(s.commitFlash)
     }
 
     func testCorruptFileFallsBackToDefaultsAndKeepsTheOldFile() throws {

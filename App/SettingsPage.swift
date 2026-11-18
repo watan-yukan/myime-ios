@@ -44,6 +44,7 @@ struct SettingsPage: View {
                     Toggle("數字列選字", isOn: $model.settings.numberRow)
                     Toggle("字母鍵下滑輸入", isOn: $model.settings.flickSecondary)
                     Toggle("鄰鍵容錯候選", isOn: $model.settings.fuzzyNeighborKeys)
+                    Toggle("空白送字放大提示", isOn: $model.settings.commitFlash)
                     Picker("組字顯示位置", selection: $model.settings.composingDisplay) {
                         Text("鍵盤上方").tag(ComposingDisplay.bar)
                         Text("輸入框內").tag(ComposingDisplay.inline)
@@ -54,7 +55,7 @@ struct SettingsPage: View {
                 } header: {
                     Text("候選字")
                 } footer: {
-                    Text("鄰鍵容錯候選：打的字根查不到字時，把其中一碼換成旁邊的鍵再查，以淡色列在候選列，點選才會送出。組字顯示在輸入框內時，少數 App 可能顯示異常；有問題請改回「鍵盤上方」。")
+                    Text("空白送字放大提示：按空白送出候選字時，那個字會在鍵盤中央放大淡出。鄰鍵容錯候選：打的字根查不到字時，把其中一碼換成旁邊的鍵再查，以淡色列在候選列，點選才會送出。組字顯示在輸入框內時，少數 App 可能顯示異常；有問題請改回「鍵盤上方」。")
                 }
 
                 Section {

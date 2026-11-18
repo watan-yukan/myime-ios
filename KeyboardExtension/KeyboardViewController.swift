@@ -59,6 +59,8 @@ final class KeyboardViewController: UIInputViewController {
 
     private let candidateBar = CandidateBarView()
     private let keysView = KeyboardKeysView()
+    private let commitFlash = CommitFlashView()
+    private var flashColor: UIColor = .label
     private let candidatePanel = CandidatePanelView()
     private let emojiPanel = EmojiPanelView()
     private let output = ProxyTextOutput()
@@ -144,6 +146,7 @@ final class KeyboardViewController: UIInputViewController {
         }
         root.insertSubview(backgroundExtensionView, belowSubview: backgroundView)
         root.clipsToBounds = false  // 讓延伸的底色有機會畫到鍵盤上方
+        root.insertSubview(commitFlash, aboveSubview: keysView)  // 疊在按鍵上、候選展開表與表情頁之下
         setupGlobeButton()
         root.addSubview(candidatePanel)
         root.addSubview(emojiPanel)
@@ -245,7 +248,7 @@ final class KeyboardViewController: UIInputViewController {
         newSession.phraseStore = phraseStore
         newSession.lexicon = Self.lexicon
         newSession.onChange = { [weak self] in self?.refreshEverything() }
-        newSession.onCandidateCommitted = { [weak self] text in self?.candidateBar.flashCommitted(text) }
+        newSession.onCandidateCommitted = { [weak self] text in self?.flashCommitted(text) }
         session = newSession
         configuredKey = ""
         logger.info("session loaded, hasTable=\(index != nil)")
@@ -463,6 +466,7 @@ final class KeyboardViewController: UIInputViewController {
         emojiPanel.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         keysView.applyTheme(palette: palette, metrics: theme.metrics)
         candidateBar.applyTheme(palette: palette, metrics: theme.metrics)
+        flashColor = palette[.candidateText].uiColor
         candidatePanel.applyTheme(palette: palette)
         emojiPanel.applyTheme(palette: palette)
         keysView.refreshContent()
@@ -550,8 +554,15 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
+    /// 空白鍵送出候選字的放大淡出提示（FR-U29），可在設定關閉。
+    private func flashCommitted(_ text: String) {
+        guard settings.commitFlash else { return }
+        commitFlash.flash(text, color: flashColor)
+    }
+
     private func refreshEverything() {
         guard let session else { return }
+        if session.composerState.isComposing { commitFlash.cancel() }
         candidateBar.update(
             state: session.composerState, hint: tableHint, candidateLimit: settings.candidateCount,
             suggestions: session.suggestions)
@@ -630,6 +641,7 @@ final class KeyboardViewController: UIInputViewController {
         candidateBar.frame = CGRect(x: 0, y: 0, width: width, height: candidateBarHeight)
         keysView.frame = CGRect(x: 0, y: candidateBarHeight, width: width, height: keysHeight)
         candidatePanel.frame = keysView.frame
+        commitFlash.frame = keysView.frame
         emojiPanel.frame = emojiPanelFrame
 
         let key = currentConfigKey() + String(format: "|%.1f", metrics.keyHeight)
