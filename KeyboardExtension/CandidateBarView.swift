@@ -5,7 +5,7 @@ import IMECore
 ///
 /// - 組字中：左邊是組字區（字根，點一下送出英文字母，FR-E01），候選字緊接在字根框右邊，放不下時有展開鈕（FR-K06），
 ///   最右邊是清除字根鍵（FR-U30）
-/// - 按空白送出候選字：送出的字在按鍵區中央放大淡出（FR-U29，見 CommitFlashView）
+/// - 鍵盤中間的送字預覽與放大淡出（FR-U29）見 CommitFlashView
 /// - 沒在組字：顯示「收起鍵盤」按鈕（主題在 MyIME App 的「主題」頁切換）；表情符號改由左下角的表情鍵開啟
 /// - 沒有候選時不顯示提示；按空白會把字根當英文送出（FR-K07）
 final class CandidateBarView: UIView {

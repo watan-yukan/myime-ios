@@ -585,15 +585,25 @@ final class KeyboardViewController: UIInputViewController {
         }
     }
 
-    /// 空白鍵送出候選字的放大淡出提示（FR-U29），可在設定關閉。
+    /// 空白鍵送出候選字的放大淡出（FR-U29），可在設定關閉。
     private func flashCommitted(_ text: String) {
         guard settings.commitFlash else { return }
         commitFlash.flash(text, color: flashColor)
     }
 
+    /// 鍵盤中間的送字預覽（FR-U29）：組字中顯示按空白會送出的第一候選；
+    /// 沒有候選（空白會送英文）或不在組字時清掉預覽，但不打斷剛開始的放大淡出。
+    private func updateCommitPreview(_ state: ComposerState) {
+        if settings.commitFlash, state.isComposing, let first = state.candidates.first {
+            commitFlash.showPreview(first, color: flashColor)
+        } else if state.isComposing || commitFlash.isPreviewing {
+            commitFlash.cancel()
+        }
+    }
+
     private func refreshEverything() {
         guard let session else { return }
-        if session.composerState.isComposing { commitFlash.cancel() }
+        updateCommitPreview(session.composerState)
         candidateBar.update(
             state: session.composerState, hint: tableHint, candidateLimit: settings.candidateCount,
             suggestions: session.suggestions)

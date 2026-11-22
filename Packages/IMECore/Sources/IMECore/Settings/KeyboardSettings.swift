@@ -90,7 +90,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     public var blockInvalidKeys = false
     /// 空白鍵移動游標的速度（FR-U04，預設「中」）。
     public var cursorSpeed = CursorSpeed.medium
-    /// 按空白送出候選字時，在按鍵區中央放大淡出提示（FR-U29）。
+    /// 鍵盤中間的送字預覽（FR-U29）：組字時顯示按空白會送出的字，按空白後放大淡出。欄位名稱沿用舊的 `commitFlash`。
     public var commitFlash = true
     public var keycapLabel = KeycapLabel.letter
     /// 組字顯示位置（FR-K13）。

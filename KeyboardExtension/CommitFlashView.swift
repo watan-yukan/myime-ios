@@ -1,14 +1,21 @@
 import UIKit
 
-/// 按空白送出的字：疊在按鍵區中上方放大並淡出（FR-U29）。
+/// 鍵盤中間的送字預覽（FR-U29）：疊在按鍵區中上方。
 ///
-/// 範圍只有按鍵區（放大到最後超出的部分裁掉），不會蓋到候選列；不接收觸控，動畫進行中照常打字。
+/// - 組字時：淡淡顯示「按空白會送出的字」（第一候選），當作送出前的預覽。
+/// - 按空白送出：這個字放大並淡出。
+///
+/// 範圍只有按鍵區（放大到最後超出的部分裁掉），不會蓋到候選列；不接收觸控，照常打字。
 final class CommitFlashView: UIView {
     private let label = UILabel()
     private let duration: TimeInterval = 1.0
     private let fontSize: CGFloat = 88
+    /// 預覽的不透明度：看得出來，又不會擋住底下的按鍵。
+    private let previewAlpha: CGFloat = 0.45
     /// 字的中心在按鍵區由上往下 28% 的位置（中上方）。
     private let centerYRatio: CGFloat = 0.28
+    /// 正在顯示預覽（不是放大淡出動畫）。
+    private(set) var isPreviewing = false
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -17,7 +24,7 @@ final class CommitFlashView: UIView {
         backgroundColor = .clear
         label.font = UIFont.systemFont(ofSize: fontSize)
         label.textAlignment = .center
-        // 送出的是長詞時縮小字級塞進一行，不顯示「…」
+        // 長詞時縮小字級塞進一行，不顯示「…」
         label.adjustsFontSizeToFitWidth = true
         label.minimumScaleFactor = 0.3
         label.alpha = 0
@@ -26,8 +33,20 @@ final class CommitFlashView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    /// 前一個還沒淡完就直接換成新的字。
+    /// 組字中的預覽：靜態、半透明；同一個字不重設，避免閃動。
+    func showPreview(_ text: String, color: UIColor) {
+        if isPreviewing, label.text == text { return }
+        label.layer.removeAllAnimations()
+        label.text = text
+        label.textColor = color
+        label.transform = .identity
+        label.alpha = previewAlpha
+        isPreviewing = true
+    }
+
+    /// 按空白送出：從預覽的位置放大並淡出；前一個還沒淡完就直接換成新的字。
     func flash(_ text: String, color: UIColor) {
+        isPreviewing = false
         label.layer.removeAllAnimations()
         label.text = text
         label.textColor = color
@@ -39,8 +58,9 @@ final class CommitFlashView: UIView {
         }
     }
 
-    /// 開始打下一個字根時立刻消失。
+    /// 立刻清掉（預覽或動畫都一樣）。
     func cancel() {
+        isPreviewing = false
         guard label.alpha > 0 || label.layer.animationKeys() != nil else { return }
         label.layer.removeAllAnimations()
         label.alpha = 0
