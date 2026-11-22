@@ -187,6 +187,17 @@ final class KeyboardViewController: UIInputViewController {
             sizerHeight.isActive = true
         }
         rootView.setNeedsLayout()
+        disableEdgeTouchDelay()
+    }
+
+    /// 螢幕左右邊緣有系統手勢（例如從邊緣滑動），系統會先延後觸控、確定不是手勢才交給鍵盤，
+    /// 所以最靠邊的 Q、P 等鍵預覽會慢半拍。把鍵盤所在視窗與上層 view 的手勢延遲關掉（第三方鍵盤常見做法）。
+    private func disableEdgeTouchDelay() {
+        var current: UIView? = view
+        while let node = current {
+            node.gestureRecognizers?.forEach { $0.delaysTouchesBegan = false }
+            current = node.superview  // 一路往上到視窗本身
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
