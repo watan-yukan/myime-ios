@@ -11,6 +11,9 @@ public struct Composer {
     public static let maxBufferLength = 32
 
     public private(set) var state: ComposerState = .idle
+    /// 最近一次 `handle` 送出的候選字（送出英文字母時為 nil）；每次 `handle` 開始時清除。
+    /// 空白鍵送字的放大淡出提示用（FR-U29）。
+    public private(set) var lastCommittedCandidate: String?
     public var display: ComposingDisplay
     /// 目前輸入模式（FR-K08），以 `.toggleInputMode` 切換。
     public private(set) var mode: InputMode = .chinese
@@ -23,6 +26,10 @@ public struct Composer {
     /// 候選列目前顯示的第一個候選位置（展開候選表翻頁時由 UI 設定）；數字選字以此為起點。
     /// 每次字根改變都會歸零。
     public var selectionWindowStart = 0
+    /// 停用組不出字的下一個字根鍵（FR-K16，預設關閉）：按了不動作。
+    public var blockInvalidKeys = false
+    /// 鄰鍵容錯（FR-K15，預設開啟）。
+    public var fuzzyNeighborKeys = true
     /// 空白鍵上滑直輸英文（FR-E03）；關閉時 `.swipeUpSpace` 不動作（FR-E04，預設開啟）。
     public var spaceSwipeUpEnglish = true
     /// 以英文選項或空白上滑送出英文後，自動補一個空格（FR-E04，預設關閉）。
@@ -36,7 +43,6 @@ public struct Composer {
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
-    private var punctuation = Punctuation()
 
     public init(source: any CandidateSource, display: ComposingDisplay = .bar) {
         self.source = source
@@ -47,6 +53,7 @@ public struct Composer {
     /// 處理一個事件，回傳要對輸入框執行的動作（依序執行）。
     @discardableResult
     public mutating func handle(_ event: InputEvent) -> [OutputAction] {
+        lastCommittedCandidate = nil
         if mode == .english, event != .toggleInputMode {
             return handleEnglish(event)
         }
@@ -66,8 +73,9 @@ public struct Composer {
         case .backspace:
             return handleBackspace()
         case .selectCandidate(let index):
-            guard state.isComposing, state.candidates.indices.contains(index) else { return [] }
-            return commit(state.candidates[index])
+            let all = state.allCandidates  // 含容錯候選
+            guard state.isComposing, all.indices.contains(index) else { return [] }
+            return commit(all[index])
         case .returnKey:
             // 組字中按 Return 送出原始字母，不換行（FR-K12、TBD-17）
             guard state.isComposing else { return [.insert("\n")] }
@@ -79,9 +87,14 @@ public struct Composer {
         case .selectEnglishOption:
             guard state.isComposing else { return [] }
             return sendEnglish()
+        case .clearComposition:
+            // 候選列清除鍵：丟掉字根，不送出（FR-U30）
+            guard state.isComposing else { return [] }
+            state = .idle
+            selectionWindowStart = 0
+            return display == .inline ? [.clearMarked] : []
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
-            punctuation.reset()
             selectionWindowStart = 0
             guard state.isComposing else { return [] }
             state = .idle
@@ -100,7 +113,7 @@ public struct Composer {
         case .swipeUpSpace: return [.insert(" ")]
         case .returnKey: return [.insert("\n")]
         case .backspace: return [.deleteBackward]
-        case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode: return []
+        case .selectCandidate, .selectEnglishOption, .contextChanged, .toggleInputMode, .clearComposition: return []
         }
     }
 
@@ -120,17 +133,26 @@ public struct Composer {
            let offset = selectionKeys.pageOffset(for: key) {
             // 數字列選字（FR-U22）：該位置沒有候選時不動作，避免誤送數字
             let index = selectionWindowStart + offset
-            guard state.candidates.indices.contains(index) else { return [] }
-            return commit(state.candidates[index])
+            let all = state.allCandidates
+            guard all.indices.contains(index) else { return [] }
+            return commit(all[index])
         }
         guard codeKeys.contains(key) else {
             // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入；符號轉全形（FR-K09）
-            let text = fullWidthPunctuation ? punctuation.convert(character) : String(character)
+            let text = fullWidthPunctuation ? Punctuation.convert(character) : String(character)
             return commitForPassthrough() + [.insert(text)]
         }
         guard state.code.count < Self.maxBufferLength else { return [] }
+        guard !isBlocked(key) else { return [] }  // FR-K16
         update(code: state.code + String(key))
         return markedAction()
+    }
+
+    /// 組字中，這個字根鍵接下去是否組不出任何字（FR-K16）；設定關閉、英文模式或沒在組字時都是 false。
+    public func isBlocked(_ character: Character) -> Bool {
+        let key = character.lowercased().first ?? character
+        guard blockInvalidKeys, mode == .chinese, state.isComposing, codeKeys.contains(key) else { return false }
+        return !source.hasCode(withPrefix: state.code + String(key))
     }
 
     /// 沒在組字時的空白：依雙空白句點規則決定輸出（FR-U08）。
@@ -147,8 +169,8 @@ public struct Composer {
     private mutating func handleSpace() -> [OutputAction] {
         guard state.isComposing else { return idleSpace(mode: .chinese) }
         guard let first = state.candidates.first else {
-            // 錯碼或尚未打完：不送出，保留字根讓使用者修正（FR-K07）
-            return []
+            // 沒有候選（錯碼、尚未打完、超過碼長）：把字根當英文送出（FR-K07，2026-11-18 改）
+            return sendEnglish()
         }
         return commit(first)
     }
@@ -178,11 +200,17 @@ public struct Composer {
         } else {
             status = .invalid
         }
-        state = ComposerState(code: code, candidates: candidates, status: status)
+        // 查不到字時才容錯（FR-K15）：2 碼以上、未超過碼長；超過碼長多半是在打英文
+        var fuzzy: [String] = []
+        if fuzzyNeighborKeys, candidates.isEmpty, code.count >= 2, status != .overLength {
+            fuzzy = NeighborKeys.candidates(for: code, source: source)
+        }
+        state = ComposerState(code: code, candidates: candidates, status: status, fuzzyCandidates: fuzzy)
         selectionWindowStart = 0
     }
 
     private mutating func commit(_ text: String) -> [OutputAction] {
+        lastCommittedCandidate = state.candidates.contains(text) ? text : nil
         state = .idle
         selectionWindowStart = 0
         return [.insert(text)]

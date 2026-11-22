@@ -1,0 +1,80 @@
+import SwiftUI
+import IMECore
+
+/// 設定頁（FR-A04）。修改後立即存到 App Group，鍵盤下次出現時套用。
+struct SettingsPage: View {
+    @EnvironmentObject private var model: AppModel
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if !model.settingsWritable {
+                    Section {
+                        StatusRow(
+                            title: "設定檔比這版 App 新", detail: "為了不弄壞新版的設定，這裡只能檢視、不能修改。請更新 App。",
+                            level: .warning)
+                    }
+                }
+
+                Section("按鍵回饋") {
+                    Toggle("按鍵音", isOn: $model.settings.keySound)
+                    Toggle("按鍵震動", isOn: $model.settings.haptics)
+                }
+
+                Section {
+                    Toggle("英文自動大寫", isOn: $model.settings.autoCapitalize)
+                    Toggle("雙空白句點", isOn: $model.settings.doubleSpacePeriod)
+                    Toggle("中文模式標點轉全形", isOn: $model.settings.fullWidthPunctuation)
+                    Picker("空白鍵移動游標速度", selection: $model.settings.cursorSpeed) {
+                        Text("快").tag(CursorSpeed.fast)
+                        Text("中").tag(CursorSpeed.medium)
+                        Text("慢").tag(CursorSpeed.slow)
+                    }
+                } header: {
+                    Text("輸入")
+                } footer: {
+                    Text("雙空白句點：英文輸入「. 」，中文輸入「。」。在空白鍵上左右滑動可移動游標，速度太快時改成「中」或「慢」。")
+                }
+
+                Section {
+                    Toggle("送出英文後自動補空格", isOn: $model.settings.spaceSwipeUpAppendSpace)
+                    Toggle("送出的英文套用自動大寫", isOn: $model.settings.autoCapitalizeEnglishSend)
+                } header: {
+                    Text("中英混打")
+                } footer: {
+                    Text("組字時點候選列最左邊的字根、按 Return，或打到沒有對應的字再按空白，就能把打的字母當英文送出，不用切換鍵盤。")
+                }
+
+                Section {
+                    Toggle("數字列選字", isOn: $model.settings.numberRow)
+                    Toggle("字母鍵下滑輸入", isOn: $model.settings.flickSecondary)
+                    Toggle("鄰鍵容錯候選", isOn: $model.settings.fuzzyNeighborKeys)
+                    Toggle("停用組不出字的鍵", isOn: $model.settings.blockInvalidKeys)
+                    Toggle("鍵盤中間預覽送出的字", isOn: $model.settings.commitFlash)
+                    Picker("組字顯示位置", selection: $model.settings.composingDisplay) {
+                        Text("鍵盤上方").tag(ComposingDisplay.bar)
+                        Text("輸入框內").tag(ComposingDisplay.inline)
+                    }
+                    Stepper(
+                        model.settings.candidateCount == 0 ? "候選字數：自動" : "候選字數：\(model.settings.candidateCount)",
+                        value: $model.settings.candidateCount, in: 0...12)
+                } header: {
+                    Text("候選字")
+                } footer: {
+                    Text("鍵盤中間預覽送出的字：組字時在鍵盤中上方淡淡顯示按空白會送出的字，按空白後這個字放大淡出。鄰鍵容錯候選：打的字根查不到字時，把其中一碼換成旁邊的鍵再查，以淡色列在候選列，點選才會送出。停用組不出字的鍵：組字時接下去組不出字的字母鍵會變淡、按了沒反應；這時在空白鍵上往上滑可切換英文（空白鍵顯示 English），再上滑一次回到中文，下次叫出鍵盤也會自動回到中文。組字顯示在輸入框內時，少數 App 可能顯示異常；有問題請改回「鍵盤上方」。")
+                }
+
+                Section {
+                    Toggle("記錄常用詞", isOn: $model.settings.phraseLearning)
+                    Toggle("內建詞庫聯想", isOn: $model.settings.builtinLexicon)
+                } header: {
+                    Text("常用詞")
+                } footer: {
+                    Text("只用來在你打完一個字後建議常接的詞，不會改變碼表的候選字順序。你用過的詞排在前面，內建詞庫的詞接在後面；在建議詞上長按可刪除。")
+                }
+            }
+            .navigationTitle("設定")
+            .onChange(of: model.settings) { _, _ in model.saveSettings() }
+        }
+    }
+}

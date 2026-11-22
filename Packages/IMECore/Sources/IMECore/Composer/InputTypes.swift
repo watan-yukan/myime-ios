@@ -14,6 +14,8 @@ public enum InputEvent: Equatable, Sendable {
     case selectCandidate(Int)
     /// 空白鍵上滑：組字內容當英文送出（FR-E03）。
     case swipeUpSpace
+    /// 候選列的清除鍵：丟掉目前的字根，不送出（FR-U30）。
+    case clearComposition
     /// 游標移動、切換欄位、收起鍵盤（FR-K14）。
     case contextChanged
     /// 中 / 英切換鍵（FR-K08）。

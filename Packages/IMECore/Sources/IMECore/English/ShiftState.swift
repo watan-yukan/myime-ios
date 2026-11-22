@@ -16,6 +16,8 @@ public struct ShiftState: Equatable, Sendable {
     public static let doubleTapWindow: TimeInterval = 0.35
 
     public private(set) var mode: Mode = .off
+    /// 這次 Shift 是不是自動大寫（句首）打開的；自動打開的只影響字母，不會把 `,` 變成 `!`。
+    public private(set) var isAutomatic = false
     private var lastTapTime: TimeInterval?
 
     public init() {}
@@ -25,6 +27,7 @@ public struct ShiftState: Equatable, Sendable {
 
     /// 點一下 Shift。
     public mutating func tap(at time: TimeInterval) {
+        isAutomatic = false
         if let last = lastTapTime, time - last <= Self.doubleTapWindow {
             // 雙擊：鎖定大寫
             mode = .locked
@@ -41,16 +44,21 @@ public struct ShiftState: Equatable, Sendable {
     /// 輸入一個字元後呼叫：一次性大寫用完即關閉，鎖定維持。
     public mutating func didTypeCharacter() {
         if mode == .once { mode = .off }
+        isAutomatic = false
         lastTapTime = nil
     }
 
     /// 自動大寫（句首）：只在目前是關閉時打開一次性大寫，不覆蓋使用者的操作。
     public mutating func applyAutoCapitalization(_ shouldCapitalize: Bool) {
-        if shouldCapitalize, mode == .off { mode = .once }
+        if shouldCapitalize, mode == .off {
+            mode = .once
+            isAutomatic = true
+        }
     }
 
     public mutating func reset() {
         mode = .off
+        isAutomatic = false
         lastTapTime = nil
     }
 }
