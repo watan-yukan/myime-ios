@@ -91,13 +91,10 @@ final class ModeAndPunctuationTests: XCTestCase {
         XCTAssertEqual(c.handle(.key("@")), [.insert("@")], "不在對照表的符號原樣輸出")
     }
 
-    func testQuotesAlternateOpenAndClose() {
+    func testDoubleQuoteStaysHalfWidth() {
         var c = composer()
-        XCTAssertEqual(c.handle(.key("\"")), [.insert("「")])
-        XCTAssertEqual(c.handle(.key("\"")), [.insert("」")])
-        XCTAssertEqual(c.handle(.key("\"")), [.insert("「")])
-        c.handle(.contextChanged)
-        XCTAssertEqual(c.handle(.key("\"")), [.insert("「")], "換欄位後重新從開引號開始")
+        XCTAssertEqual(c.handle(.key("\"")), [.insert("\"")], "引號不再轉成「」（2026-11-22）")
+        XCTAssertEqual(c.handle(.key("\"")), [.insert("\"")])
     }
 
     func testFullWidthCanBeTurnedOff() {
@@ -113,8 +110,7 @@ final class ModeAndPunctuationTests: XCTestCase {
     }
 
     func testPunctuationTableCoversCommonSymbols() {
-        var p = Punctuation()
-        let converted = "!?:;()[]{}<>~\\".map { p.convert($0) }.joined()
+        let converted = "!?:;()[]{}<>~\\".map { Punctuation.convert($0) }.joined()
         XCTAssertEqual(converted, "！？：；（）「」『』《》～、")
     }
 }

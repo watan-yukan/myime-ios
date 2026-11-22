@@ -41,7 +41,6 @@ public struct Composer {
 
     private let source: any CandidateSource
     private let codeKeys: Set<Character>
-    private var punctuation = Punctuation()
 
     public init(source: any CandidateSource, display: ComposingDisplay = .bar) {
         self.source = source
@@ -94,7 +93,6 @@ public struct Composer {
             return display == .inline ? [.clearMarked] : []
         case .contextChanged:
             // 游標移動或切換欄位：清除組字，不送出（FR-K14）
-            punctuation.reset()
             selectionWindowStart = 0
             guard state.isComposing else { return [] }
             state = .idle
@@ -139,7 +137,7 @@ public struct Composer {
         }
         guard codeKeys.contains(key) else {
             // 非字根鍵（數字、其他符號）：送出組字中的內容後直接輸入；符號轉全形（FR-K09）
-            let text = fullWidthPunctuation ? punctuation.convert(character) : String(character)
+            let text = fullWidthPunctuation ? Punctuation.convert(character) : String(character)
             return commitForPassthrough() + [.insert(text)]
         }
         guard state.code.count < Self.maxBufferLength else { return [] }
