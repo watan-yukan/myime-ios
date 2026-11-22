@@ -280,4 +280,46 @@ final class ComposerTests: XCTestCase {
         c.handle(.key("a"))
         XCTAssertEqual(c.handle(.contextChanged), [.clearMarked])
     }
+
+    // MARK: - 停用組不出字的鍵（FR-K16）
+
+    func testBlockedKeysOnlyWhenComposingAndEnabled() {
+        var c = composer()
+        XCTAssertFalse(c.isBlocked("z"), "設定關閉時都不停用")
+        c.blockInvalidKeys = true
+        XCTAssertFalse(c.isBlocked("z"), "沒在組字時不停用")
+        c.handle(.key("a"))
+        XCTAssertFalse(c.isBlocked("b"), "ab 有字")
+        XCTAssertTrue(c.isBlocked("z"), "az 開頭的字根不存在")
+        XCTAssertTrue(c.isBlocked("Z"), "大小寫一樣")
+        XCTAssertFalse(c.isBlocked("7"), "非字根鍵不停用")
+    }
+
+    func testBlockedKeyIsIgnored() {
+        var c = composer()
+        c.blockInvalidKeys = true
+        c.handle(.key("a"))
+        XCTAssertEqual(c.handle(.key("z")), [])
+        XCTAssertEqual(c.state.code, "a", "按了停用的鍵，字根不變")
+        c.handle(.key("b"))
+        XCTAssertEqual(c.state.candidates, ["三"])
+    }
+
+    func testPrefixThatOnlyLeadsToLongerCodesIsNotBlocked() {
+        var c = composer()
+        c.blockInvalidKeys = true
+        "ts".forEach { c.handle(.key($0)) }
+        XCTAssertEqual(c.state.code, "ts", "tsu, 開頭：t、s 都不停用")
+        XCTAssertFalse(c.isBlocked("u"))
+        XCTAssertTrue(c.isBlocked("a"))
+    }
+
+    func testEnglishModeNeverBlocks() {
+        var c = composer()
+        c.blockInvalidKeys = true
+        c.handle(.toggleInputMode)
+        c.handle(.key("a"))
+        XCTAssertFalse(c.isBlocked("z"))
+        XCTAssertEqual(c.handle(.key("z")), [.insert("z")])
+    }
 }

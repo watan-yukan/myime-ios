@@ -19,6 +19,9 @@ final class KeyboardKeysView: UIView {
     var onBackspaceRepeat: ((Int) -> Void)?
     /// 觸控板模式：游標往右（正）或往左（負）移動幾個字元。
     var onTrackpadMove: ((Int) -> Void)?
+    /// 空白鍵往上滑（FR-K16：停用鍵開啟時切換中 / 英）；`spaceSwipeUpEnabled` 為 false 時不偵測。
+    var onSpaceSwipeUp: (() -> Void)?
+    var spaceSwipeUpEnabled = false
     var onAlternateSelected: ((String) -> Void)?
     /// 下滑輸入跨過門檻（觸覺回饋用，FR-U25）。
     var onSecondaryArmed: (() -> Void)?
@@ -66,6 +69,8 @@ final class KeyboardKeysView: UIView {
     private let backspaceInterval: TimeInterval = 0.08
     /// 空白鍵上橫向移動超過這個距離就直接進入移動游標模式（不用長按）。
     private let spaceDragDistance: CGFloat = 10
+    /// 空白鍵往上滑超過這個距離（且以垂直為主）算上滑。
+    private let spaceSwipeUpDistance: CGFloat = 25
     /// 觸控板模式每移動多少 pt 游標走一個字（再依手指速度加速）；依設定的游標速度調整。
     var trackpadStep: CGFloat = 10
     /// 手指滑得快時最多加速幾倍（1 表示不加速）。
@@ -363,6 +368,12 @@ final class KeyboardKeysView: UIView {
                     let factor = min(speed > 700 ? 3 : (speed > 350 ? 2 : 1), trackpadMaxAcceleration)
                     onTrackpadMove?(steps * factor)
                 }
+            } else if spaceSwipeUpEnabled, !gesture.consumed, gesture.start.y - point.y > spaceSwipeUpDistance,
+                      gesture.start.y - point.y > abs(point.x - gesture.start.x) {
+                // 往上滑：切換中 / 英，放開時不再輸入空白（FR-K16）
+                gesture.cancelTimers()
+                gesture.consumed = true
+                onSpaceSwipeUp?()
             } else if !gesture.consumed, abs(point.x - gesture.start.x) > spaceDragDistance {
                 // 不用長按：在空白鍵上左右滑動就直接移動游標（FR-U04）。
                 // 錨點設在起點，跨過門檻前移動的距離也算進去，游標不會慢半拍
@@ -444,6 +455,7 @@ final class KeyboardKeysView: UIView {
 
     private func showPreview(for frame: KeyFrame, text override: String? = nil) {
         guard showsPreview, frame.key.type == .char,
+              override != nil || !contentProvider(frame.key).isDimmed,  // 停用的鍵不顯示預覽
               let text = override ?? contentProvider(frame.key).text, !text.isEmpty else {
             previewView.isHidden = true
             return

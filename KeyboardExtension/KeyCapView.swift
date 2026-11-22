@@ -13,6 +13,8 @@ struct KeyContent: Equatable {
     var secondary: String? = nil
     /// 提示用的小圖示（空白鍵上滑提示，FR-U27）：較小、用次要文字色。
     var isHint = false
+    /// 停用的字根鍵（組不出字，FR-K16）：字母變淡；上方小字照常，下滑輸入仍可用。
+    var isDimmed = false
 }
 
 /// 單一按鍵外觀：顏色、圓角、邊框、陰影全部來自主題（FR-T01），元件內不寫死任何顏色。
@@ -126,6 +128,7 @@ final class KeyCapView: UIView {
         }
         backgroundColor = background.uiColor
         label.textColor = foreground.uiColor
+        label.alpha = content.isDimmed ? 0.25 : 1
         imageView.tintColor = content.isHint ? palette[.keySecondaryText].uiColor : foreground.uiColor
         secondaryLabel.textColor = palette[.keySecondaryText].uiColor
 

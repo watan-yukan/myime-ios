@@ -410,6 +410,46 @@ final class SessionTests: XCTestCase {
         tap(session, "a")
         XCTAssertGreaterThan(count, 0)
     }
+
+    // MARK: - 停用組不出字的鍵（FR-K16）
+
+    func testBlockedKeyTapDoesNothing() {
+        let (session, output) = make { $0.blockInvalidKeys = true }
+        tap(session, "a")
+        XCTAssertTrue(session.isKeyBlocked(LayoutKey(char: "z")))
+        XCTAssertFalse(session.isKeyBlocked(LayoutKey(char: "b")))
+        tap(session, "z")
+        XCTAssertEqual(session.composerState.code, "a")
+        session.tap(space)
+        XCTAssertEqual(output.visibleText, "一")
+    }
+
+    func testShiftedLetterIsNeverBlocked() {
+        let (session, output) = make { $0.blockInvalidKeys = true }
+        tap(session, "a")
+        session.tap(shiftKey)
+        XCTAssertFalse(session.isKeyBlocked(LayoutKey(char: "z")), "Shift 直輸大寫英文，不受停用影響")
+        tap(session, "z")
+        XCTAssertEqual(output.visibleText, "一Z")
+    }
+
+    func testToggleInputModeLetsBlockedLettersThrough() {
+        let (session, output) = make { $0.blockInvalidKeys = true }
+        session.toggleInputMode()
+        XCTAssertEqual(session.mode, .english)
+        tap(session, "az")
+        XCTAssertFalse(session.isKeyBlocked(LayoutKey(char: "z")))
+        XCTAssertTrue(output.visibleText.lowercased().hasSuffix("az"))
+        session.toggleInputMode()
+        XCTAssertEqual(session.mode, .chinese)
+    }
+
+    func testBlockingIsOffByDefault() {
+        let (session, _) = make()
+        tap(session, "a")
+        XCTAssertFalse(session.isKeyBlocked(LayoutKey(char: "z")))
+        XCTAssertFalse(KeyboardSettings().blockInvalidKeys, "FR-K16：預設關閉")
+    }
 }
 
 final class SettingsTests: XCTestCase {

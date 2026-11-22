@@ -86,6 +86,8 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     public var flickSecondary = true
     /// 打的碼查不到字時，把一碼換成鄰近按鍵再查，候選列以淡色顯示（FR-K15）。
     public var fuzzyNeighborKeys = true
+    /// 組字時停用組不出字的下一個字根鍵；開啟時空白鍵上滑切換中 / 英（FR-K16，預設關閉）。
+    public var blockInvalidKeys = false
     /// 空白鍵移動游標的速度（FR-U04，預設「中」）。
     public var cursorSpeed = CursorSpeed.medium
     /// 按空白送出候選字時，在按鍵區中央放大淡出提示（FR-U29）。
@@ -108,7 +110,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, keySound, haptics, autoCapitalize, doubleSpacePeriod
         case spaceSwipeUpEnglish, spaceSwipeUpAppendSpace, autoCapitalizeEnglishSend
-        case fullWidthPunctuation, numberRow, flickSecondary, fuzzyNeighborKeys, commitFlash, cursorSpeed, keycapLabel, composingDisplay, candidateCount
+        case fullWidthPunctuation, numberRow, flickSecondary, fuzzyNeighborKeys, commitFlash, cursorSpeed, blockInvalidKeys, keycapLabel, composingDisplay, candidateCount
         case phraseLearning, builtinLexicon, clipboard, theme, backup
     }
 
@@ -130,6 +132,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
         flickSecondary = try c.decodeIfPresent(Bool.self, forKey: .flickSecondary) ?? d.flickSecondary
         fuzzyNeighborKeys = try c.decodeIfPresent(Bool.self, forKey: .fuzzyNeighborKeys) ?? d.fuzzyNeighborKeys
         commitFlash = try c.decodeIfPresent(Bool.self, forKey: .commitFlash) ?? d.commitFlash
+        blockInvalidKeys = try c.decodeIfPresent(Bool.self, forKey: .blockInvalidKeys) ?? d.blockInvalidKeys
         cursorSpeed = (try? c.decodeIfPresent(CursorSpeed.self, forKey: .cursorSpeed)) ?? d.cursorSpeed
         keycapLabel = try c.decodeIfPresent(KeycapLabel.self, forKey: .keycapLabel) ?? d.keycapLabel
         composingDisplay = try c.decodeIfPresent(ComposingDisplay.self, forKey: .composingDisplay) ?? d.composingDisplay

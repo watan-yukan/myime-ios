@@ -175,6 +175,8 @@ final class KeyboardViewController: UIInputViewController {
         hidePanels()
         session?.autocapitalizationType = autocapitalizationType()
         session?.contextChanged()
+        // 停用鍵開啟時用上滑切到的英文模式，只維持到這次輸入結束；鍵盤再出現時回到中文（FR-K16）
+        if settings.blockInvalidKeys, session?.mode == .english { session?.toggleInputMode() }
         applyKeyboardTypeDefaults()
         refreshEverything()
     }
@@ -239,6 +241,7 @@ final class KeyboardViewController: UIInputViewController {
         keysView.flickEnabled = settings.flickSecondary
         keysView.trackpadStep = CGFloat(settings.cursorSpeed.pointsPerStep)
         keysView.trackpadMaxAcceleration = settings.cursorSpeed.maxAcceleration
+        keysView.spaceSwipeUpEnabled = settings.blockInvalidKeys
     }
 
     /// 載入碼表與引擎；碼表沒有變動時沿用現有引擎，不會讓使用者的中 / 英模式被重置。
@@ -317,6 +320,15 @@ final class KeyboardViewController: UIInputViewController {
         keysView.onBackspaceRepeat = { [weak self] count in self?.session?.repeatBackspace(count: count) }
         keysView.onTrackpadMove = { [weak self] steps in self?.moveCursor(by: steps) }
         keysView.onAlternateSelected = { [weak self] text in self?.insertAlternate(text) }
+        keysView.onSpaceSwipeUp = { [weak self] in
+            // 空白鍵上滑切換中 / 英（FR-K16）
+            guard let self else { return }
+            self.session?.toggleInputMode()
+            if self.settings.haptics, self.hasFullAccess {
+                self.haptic.impactOccurred()
+                self.haptic.prepare()
+            }
+        }
         keysView.onSecondaryArmed = { [weak self] in
             // 下滑跨過門檻：震一下（只震動、不再發按鍵音）
             guard let self, self.settings.haptics, self.hasFullAccess else { return }
@@ -532,7 +544,9 @@ final class KeyboardViewController: UIInputViewController {
             // Shift 時換成另一組符號（FR-U25），省去切到符號頁
             let shifted = session.shift.mode != .off ? (key.shiftSecondary ?? key.secondary) : key.secondary
             let secondary = settings.flickSecondary ? shifted : nil
-            return KeyContent(text: key.label ?? text, secondary: secondary)
+            var content = KeyContent(text: key.label ?? text, secondary: secondary)
+            content.isDimmed = session.isKeyBlocked(key)  // 組不出字的字根鍵變淡（FR-K16）
+            return content
         case .shift:
             switch session.shift.mode {
             case .off: return KeyContent(symbol: "shift")
@@ -541,6 +555,10 @@ final class KeyboardViewController: UIInputViewController {
             }
         case .backspace: return KeyContent(symbol: "delete.left")
         case .space:
+            // 上滑切到英文時，空白鍵顯示「English」，提醒目前不是中文（FR-K16）
+            if settings.blockInvalidKeys, session.mode == .english {
+                return KeyContent(text: "English", isFunctionText: true)
+            }
             return KeyContent()
         case .returnKey: return returnKeyContent()
         case .page: return KeyContent(text: key.label, isFunctionText: true)

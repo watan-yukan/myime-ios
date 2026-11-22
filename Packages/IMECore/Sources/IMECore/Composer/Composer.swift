@@ -26,6 +26,8 @@ public struct Composer {
     /// 候選列目前顯示的第一個候選位置（展開候選表翻頁時由 UI 設定）；數字選字以此為起點。
     /// 每次字根改變都會歸零。
     public var selectionWindowStart = 0
+    /// 停用組不出字的下一個字根鍵（FR-K16，預設關閉）：按了不動作。
+    public var blockInvalidKeys = false
     /// 鄰鍵容錯（FR-K15，預設開啟）。
     public var fuzzyNeighborKeys = true
     /// 空白鍵上滑直輸英文（FR-E03）；關閉時 `.swipeUpSpace` 不動作（FR-E04，預設開啟）。
@@ -141,8 +143,16 @@ public struct Composer {
             return commitForPassthrough() + [.insert(text)]
         }
         guard state.code.count < Self.maxBufferLength else { return [] }
+        guard !isBlocked(key) else { return [] }  // FR-K16
         update(code: state.code + String(key))
         return markedAction()
+    }
+
+    /// 組字中，這個字根鍵接下去是否組不出任何字（FR-K16）；設定關閉、英文模式或沒在組字時都是 false。
+    public func isBlocked(_ character: Character) -> Bool {
+        let key = character.lowercased().first ?? character
+        guard blockInvalidKeys, mode == .chinese, state.isComposing, codeKeys.contains(key) else { return false }
+        return !source.hasCode(withPrefix: state.code + String(key))
     }
 
     /// 沒在組字時的空白：依雙空白句點規則決定輸出（FR-U08）。

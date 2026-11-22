@@ -67,18 +67,29 @@ public final class KeyboardSession {
         case .returnKey:
             perform(.returnKey)
         case .langToggle:
-            perform(.toggleInputMode)
-            if composer.mode == .chinese {
-                shift.reset()  // 中文模式的字根不分大小寫，避免殘留的 Shift 讓字根變成大寫英文
-            } else {
-                refreshAutoCapitalization()
-            }
-            changed()
+            toggleInputMode()
         case .page:
             if let target = key.target { switchPage(to: target) }
         case .globe, .emoji, .dismiss, .tab, .spacer:
             break  // 由畫面層處理
         }
+    }
+
+    /// 切換中 / 英輸入模式（語言鍵；停用鍵開啟時由空白鍵上滑觸發，FR-K16）。
+    public func toggleInputMode() {
+        perform(.toggleInputMode)
+        if composer.mode == .chinese {
+            shift.reset()  // 中文模式的字根不分大小寫，避免殘留的 Shift 讓字根變成大寫英文
+        } else {
+            refreshAutoCapitalization()
+        }
+        changed()
+    }
+
+    /// 這個鍵目前是否停用（組字中接下去組不出字，FR-K16）；畫面用來把鍵變淡。
+    public func isKeyBlocked(_ key: LayoutKey) -> Bool {
+        guard key.type == .char, !shift.isUppercase, let character = key.output?.first else { return false }
+        return composer.isBlocked(character)
     }
 
     public func switchPage(to name: String) {
@@ -171,6 +182,7 @@ public final class KeyboardSession {
     // MARK: - 內部
 
     private func typeCharacter(_ key: LayoutKey) {
+        guard !isKeyBlocked(key) else { return }  // 停用的鍵按了不動作，Shift 也不解除
         // Shift 時改輸出 shiftOutput（例如 iPad 的 `,` 鍵按 Shift 輸出 `!`）
         let text = (shift.isUppercase && !shift.isAutomatic) ? (key.shiftOutput ?? key.output) : key.output
         guard let character = (text ?? "").first else { return }
@@ -246,6 +258,7 @@ public final class KeyboardSession {
         composer.appendSpaceAfterEnglish = settings.spaceSwipeUpAppendSpace
         composer.numberRowSelection = settings.numberRow
         composer.fuzzyNeighborKeys = settings.fuzzyNeighborKeys
+        composer.blockInvalidKeys = settings.blockInvalidKeys
         configurePhraseStore()
     }
 
