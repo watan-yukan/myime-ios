@@ -162,12 +162,12 @@ final class LayoutTests: XCTestCase {
         func shifted(_ row: Int) -> String {
             rows[row].keys.filter { $0.output?.first?.isLetter == true }.compactMap(\.shiftSecondary).joined()
         }
-        XCTAssertEqual(shifted(0), "[]{}#%^*+=")
+        XCTAssertEqual(shifted(0), "", "第一排 Shift 時保留數字（2026-11-22）")
         XCTAssertEqual(shifted(1), "_\\|~<>€£¥")
         XCTAssertEqual(shifted(2), "…·•–—「」")
         let landscape = try XCTUnwrap(try loadIPhone().page("alpha")?.landscapeRows)
         XCTAssertEqual(
-            landscape[0].keys.compactMap(\.shiftSecondary), rows[0].keys.compactMap(\.shiftSecondary), "橫向同一組")
+            landscape[1].keys.compactMap(\.shiftSecondary), rows[1].keys.compactMap(\.shiftSecondary), "橫向同一組")
     }
 
     func testIPhoneLettersHaveIPadSecondaryCharacters() throws {

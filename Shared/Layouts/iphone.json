@@ -9,7 +9,7 @@
     "alpha": {
       "rows": [
         { "keys": [
-          { "output": "q", "secondary": "1", "shiftSecondary": "[" }, { "output": "w", "secondary": "2", "shiftSecondary": "]" }, { "output": "e", "secondary": "3", "shiftSecondary": "{" }, { "output": "r", "secondary": "4", "shiftSecondary": "}" }, { "output": "t", "secondary": "5", "shiftSecondary": "#" }, { "output": "y", "secondary": "6", "shiftSecondary": "%" }, { "output": "u", "secondary": "7", "shiftSecondary": "^" }, { "output": "i", "secondary": "8", "shiftSecondary": "*" }, { "output": "o", "secondary": "9", "shiftSecondary": "+" }, { "output": "p", "secondary": "0", "shiftSecondary": "=" }
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
         ] },
         { "inset": 0.5, "keys": [
           { "output": "a", "secondary": "@", "shiftSecondary": "_" }, { "output": "s", "secondary": "#", "shiftSecondary": "\\" }, { "output": "d", "secondary": "$", "shiftSecondary": "|" }, { "output": "f", "secondary": "&", "shiftSecondary": "~" }, { "output": "g", "secondary": "*", "shiftSecondary": "<" }, { "output": "h", "secondary": "(", "shiftSecondary": ">" }, { "output": "j", "secondary": ")", "shiftSecondary": "€" }, { "output": "k", "secondary": "'", "shiftSecondary": "£" }, { "output": "l", "secondary": "\"", "shiftSecondary": "¥" }
@@ -32,7 +32,7 @@
       ],
       "landscapeRows": [
         { "keys": [
-          { "output": "q", "secondary": "1", "shiftSecondary": "[" }, { "output": "w", "secondary": "2", "shiftSecondary": "]" }, { "output": "e", "secondary": "3", "shiftSecondary": "{" }, { "output": "r", "secondary": "4", "shiftSecondary": "}" }, { "output": "t", "secondary": "5", "shiftSecondary": "#" }, { "output": "y", "secondary": "6", "shiftSecondary": "%" }, { "output": "u", "secondary": "7", "shiftSecondary": "^" }, { "output": "i", "secondary": "8", "shiftSecondary": "*" }, { "output": "o", "secondary": "9", "shiftSecondary": "+" }, { "output": "p", "secondary": "0", "shiftSecondary": "=" }
+          { "output": "q", "secondary": "1" }, { "output": "w", "secondary": "2" }, { "output": "e", "secondary": "3" }, { "output": "r", "secondary": "4" }, { "output": "t", "secondary": "5" }, { "output": "y", "secondary": "6" }, { "output": "u", "secondary": "7" }, { "output": "i", "secondary": "8" }, { "output": "o", "secondary": "9" }, { "output": "p", "secondary": "0" }
         ] },
         { "inset": 0.5, "keys": [
           { "output": "a", "secondary": "@", "shiftSecondary": "_" }, { "output": "s", "secondary": "#", "shiftSecondary": "\\" }, { "output": "d", "secondary": "$", "shiftSecondary": "|" }, { "output": "f", "secondary": "&", "shiftSecondary": "~" }, { "output": "g", "secondary": "*", "shiftSecondary": "<" }, { "output": "h", "secondary": "(", "shiftSecondary": ">" }, { "output": "j", "secondary": ")", "shiftSecondary": "€" }, { "output": "k", "secondary": "'", "shiftSecondary": "£" }, { "output": "l", "secondary": "\"", "shiftSecondary": "¥" }
