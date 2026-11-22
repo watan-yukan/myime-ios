@@ -14,8 +14,14 @@ final class CommitFlashView: UIView {
     private let previewAlpha: CGFloat = 0.45
     /// 字的中心在按鍵區由上往下 28% 的位置（中上方）。
     private let centerYRatio: CGFloat = 0.28
-    /// 正在顯示預覽（不是放大淡出動畫）。
-    private(set) var isPreviewing = false
+    /// 停手多久才顯示預覽：連續快打時不出現，畫面比較安靜。
+    private let previewDelay: TimeInterval = 0.4
+    private let previewFadeIn: TimeInterval = 0.2
+    /// 目前預覽（含等待中）對應的字根；nil 表示沒有預覽。
+    private var previewCode: String?
+    private var previewWork: DispatchWorkItem?
+    /// 有預覽（已顯示或等待顯示），不是放大淡出動畫。
+    var isPreviewing: Bool { previewCode != nil }
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -33,20 +39,30 @@ final class CommitFlashView: UIView {
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    /// 組字中的預覽：靜態、半透明；同一個字不重設，避免閃動。
-    func showPreview(_ text: String, color: UIColor) {
-        if isPreviewing, label.text == text { return }
+    /// 組字中的預覽：字根一改變就先藏起來，停手 `previewDelay` 秒後才淡入（半透明、靜態）。
+    /// 同一組字根重複呼叫（例如其他畫面更新）不會重新計時。
+    func showPreview(_ text: String, code: String, color: UIColor) {
+        guard code != previewCode else { return }
+        previewCode = code
+        previewWork?.cancel()
         label.layer.removeAllAnimations()
-        label.text = text
-        label.textColor = color
+        label.alpha = 0
         label.transform = .identity
-        label.alpha = previewAlpha
-        isPreviewing = true
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.previewCode == code else { return }
+            self.label.text = text
+            self.label.textColor = color
+            UIView.animate(withDuration: self.previewFadeIn, delay: 0, options: [.curveEaseOut, .allowUserInteraction]) {
+                self.label.alpha = self.previewAlpha
+            }
+        }
+        previewWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + previewDelay, execute: work)
     }
 
-    /// 按空白送出：從預覽的位置放大並淡出；前一個還沒淡完就直接換成新的字。
+    /// 按空白送出：從預覽的位置放大並淡出（預覽還沒出現也照樣播）；前一個還沒淡完就直接換成新的字。
     func flash(_ text: String, color: UIColor) {
-        isPreviewing = false
+        clearPreviewState()
         label.layer.removeAllAnimations()
         label.text = text
         label.textColor = color
@@ -60,11 +76,17 @@ final class CommitFlashView: UIView {
 
     /// 立刻清掉（預覽或動畫都一樣）。
     func cancel() {
-        isPreviewing = false
+        clearPreviewState()
         guard label.alpha > 0 || label.layer.animationKeys() != nil else { return }
         label.layer.removeAllAnimations()
         label.alpha = 0
         label.transform = .identity
+    }
+
+    private func clearPreviewState() {
+        previewWork?.cancel()
+        previewWork = nil
+        previewCode = nil
     }
 
     override func layoutSubviews() {

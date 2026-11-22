@@ -595,7 +595,7 @@ final class KeyboardViewController: UIInputViewController {
     /// 沒有候選（空白會送英文）或不在組字時清掉預覽，但不打斷剛開始的放大淡出。
     private func updateCommitPreview(_ state: ComposerState) {
         if settings.commitFlash, state.isComposing, let first = state.candidates.first {
-            commitFlash.showPreview(first, color: flashColor)
+            commitFlash.showPreview(first, code: state.code, color: flashColor)
         } else if state.isComposing || commitFlash.isPreviewing {
             commitFlash.cancel()
         }
