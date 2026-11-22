@@ -436,6 +436,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.flickSecondary, "FR-U25：下滑輸入預設開啟")
         XCTAssertTrue(s.fuzzyNeighborKeys, "FR-K15：鄰鍵容錯預設開啟")
         XCTAssertTrue(s.commitFlash, "FR-U29：空白送字放大提示預設開啟")
+        XCTAssertEqual(s.cursorSpeed, .medium, "FR-U04：游標速度預設「中」")
         XCTAssertEqual(s.composingDisplay, .bar, "FR-K13：預設顯示在鍵盤上方")
         XCTAssertEqual(s.theme, ThemeSelection(id: "native", appearance: .system))
         XCTAssertEqual(s.clipboard.maxItems, 20)
@@ -456,6 +457,7 @@ final class SettingsTests: XCTestCase {
         settings.keycapLabel = .radical
         settings.theme = ThemeSelection(id: "morandi", appearance: .dark)
         settings.clipboard.maxItems = 50
+        settings.cursorSpeed = .slow
         let store = SettingsStore(url: file)
         try store.save(settings)
         XCTAssertEqual(store.load().settings, settings)
@@ -471,6 +473,17 @@ final class SettingsTests: XCTestCase {
         XCTAssertTrue(s.flickSecondary, "舊設定檔沒有這個欄位時用預設值")
         XCTAssertTrue(s.fuzzyNeighborKeys)
         XCTAssertTrue(s.commitFlash)
+        XCTAssertEqual(s.cursorSpeed, .medium)
+    }
+
+    func testCursorSpeedLevelsAndUnknownValue() throws {
+        XCTAssertEqual(CursorSpeed.fast.pointsPerStep, 6, "「快」等於原本的速度")
+        XCTAssertLessThan(CursorSpeed.medium.pointsPerStep, CursorSpeed.slow.pointsPerStep)
+        XCTAssertEqual(CursorSpeed.slow.maxAcceleration, 1, "「慢」不加速")
+        try Data(#"{ "schemaVersion": 1, "cursorSpeed": "warp", "numberRow": true }"#.utf8).write(to: file)
+        let s = SettingsStore(url: file).load().settings
+        XCTAssertEqual(s.cursorSpeed, .medium, "看不懂的值用預設，不影響其他設定")
+        XCTAssertTrue(s.numberRow)
     }
 
     func testCorruptFileFallsBackToDefaultsAndKeepsTheOldFile() throws {

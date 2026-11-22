@@ -226,6 +226,8 @@ final class KeyboardViewController: UIInputViewController {
         settings = SettingsStore(url: url).load().settings
         session?.settings = settings
         keysView.flickEnabled = settings.flickSecondary
+        keysView.trackpadStep = CGFloat(settings.cursorSpeed.pointsPerStep)
+        keysView.trackpadMaxAcceleration = settings.cursorSpeed.maxAcceleration
     }
 
     /// 載入碼表與引擎；碼表沒有變動時沿用現有引擎，不會讓使用者的中 / 英模式被重置。

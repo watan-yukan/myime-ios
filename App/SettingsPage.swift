@@ -25,10 +25,15 @@ struct SettingsPage: View {
                     Toggle("英文自動大寫", isOn: $model.settings.autoCapitalize)
                     Toggle("雙空白句點", isOn: $model.settings.doubleSpacePeriod)
                     Toggle("中文模式標點轉全形", isOn: $model.settings.fullWidthPunctuation)
+                    Picker("空白鍵移動游標速度", selection: $model.settings.cursorSpeed) {
+                        Text("快").tag(CursorSpeed.fast)
+                        Text("中").tag(CursorSpeed.medium)
+                        Text("慢").tag(CursorSpeed.slow)
+                    }
                 } header: {
                     Text("輸入")
                 } footer: {
-                    Text("雙空白句點：英文輸入「. 」，中文輸入「。」。")
+                    Text("雙空白句點：英文輸入「. 」，中文輸入「。」。在空白鍵上左右滑動可移動游標，速度太快時改成「中」或「慢」。")
                 }
 
                 Section {

@@ -66,8 +66,10 @@ final class KeyboardKeysView: UIView {
     private let backspaceInterval: TimeInterval = 0.08
     /// 空白鍵上橫向移動超過這個距離就直接進入移動游標模式（不用長按）。
     private let spaceDragDistance: CGFloat = 10
-    /// 觸控板模式每移動多少 pt 游標走一個字（再依手指速度加速）。
-    private let trackpadStep: CGFloat = 6
+    /// 觸控板模式每移動多少 pt 游標走一個字（再依手指速度加速）；依設定的游標速度調整。
+    var trackpadStep: CGFloat = 10
+    /// 手指滑得快時最多加速幾倍（1 表示不加速）。
+    var trackpadMaxAcceleration = 2
 
     // MARK: - 初始化
 
@@ -358,7 +360,7 @@ final class KeyboardKeysView: UIView {
                 let steps = Int(((point.x - gesture.trackpadAnchor) / trackpadStep).rounded(.towardZero))
                 if steps != 0 {
                     gesture.trackpadAnchor += CGFloat(steps) * trackpadStep
-                    let factor = speed > 700 ? 3 : (speed > 350 ? 2 : 1)
+                    let factor = min(speed > 700 ? 3 : (speed > 350 ? 2 : 1), trackpadMaxAcceleration)
                     onTrackpadMove?(steps * factor)
                 }
             } else if !gesture.consumed, abs(point.x - gesture.start.x) > spaceDragDistance {

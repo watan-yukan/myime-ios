@@ -86,6 +86,8 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     public var flickSecondary = true
     /// 打的碼查不到字時，把一碼換成鄰近按鍵再查，候選列以淡色顯示（FR-K15）。
     public var fuzzyNeighborKeys = true
+    /// 空白鍵移動游標的速度（FR-U04，預設「中」）。
+    public var cursorSpeed = CursorSpeed.medium
     /// 按空白送出候選字時，在按鍵區中央放大淡出提示（FR-U29）。
     public var commitFlash = true
     public var keycapLabel = KeycapLabel.letter
@@ -106,7 +108,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, keySound, haptics, autoCapitalize, doubleSpacePeriod
         case spaceSwipeUpEnglish, spaceSwipeUpAppendSpace, autoCapitalizeEnglishSend
-        case fullWidthPunctuation, numberRow, flickSecondary, fuzzyNeighborKeys, commitFlash, keycapLabel, composingDisplay, candidateCount
+        case fullWidthPunctuation, numberRow, flickSecondary, fuzzyNeighborKeys, commitFlash, cursorSpeed, keycapLabel, composingDisplay, candidateCount
         case phraseLearning, builtinLexicon, clipboard, theme, backup
     }
 
@@ -128,6 +130,7 @@ public struct KeyboardSettings: Equatable, Sendable, Codable {
         flickSecondary = try c.decodeIfPresent(Bool.self, forKey: .flickSecondary) ?? d.flickSecondary
         fuzzyNeighborKeys = try c.decodeIfPresent(Bool.self, forKey: .fuzzyNeighborKeys) ?? d.fuzzyNeighborKeys
         commitFlash = try c.decodeIfPresent(Bool.self, forKey: .commitFlash) ?? d.commitFlash
+        cursorSpeed = (try? c.decodeIfPresent(CursorSpeed.self, forKey: .cursorSpeed)) ?? d.cursorSpeed
         keycapLabel = try c.decodeIfPresent(KeycapLabel.self, forKey: .keycapLabel) ?? d.keycapLabel
         composingDisplay = try c.decodeIfPresent(ComposingDisplay.self, forKey: .composingDisplay) ?? d.composingDisplay
         candidateCount = try c.decodeIfPresent(Int.self, forKey: .candidateCount) ?? d.candidateCount
@@ -176,5 +179,28 @@ public struct SettingsStore {
         let data = try JSONEncoder().encode(settings)
         guard let object = try JSONSerialization.jsonObject(with: data) as? JSONObject else { return }
         try VersionedFile.save(object, to: url)
+    }
+}
+
+/// 空白鍵移動游標的速度（FR-U04）。
+public enum CursorSpeed: String, Codable, Equatable, Sendable, CaseIterable {
+    case fast, medium, slow
+
+    /// 手指每移動多少 pt，游標走一個字。
+    public var pointsPerStep: Double {
+        switch self {
+        case .fast: return 6
+        case .medium: return 10
+        case .slow: return 14
+        }
+    }
+
+    /// 手指滑得快時最多加速幾倍（1 表示不加速）。
+    public var maxAcceleration: Int {
+        switch self {
+        case .fast: return 3
+        case .medium: return 2
+        case .slow: return 1
+        }
     }
 }
